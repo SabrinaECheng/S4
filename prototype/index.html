@@ -259,7 +259,7 @@ blockquote{margin:0;padding:10px 12px;background:var(--surface-2);border-left:2p
 .ws .dock{position:absolute}
 .ws-status{margin-left:auto;font-size:11.5px;color:var(--lbl);display:flex;align-items:center;gap:7px;padding:8px 12px;border-radius:10px;background:var(--surface);border:1px solid var(--line)}
 .ws-status:empty{display:none}
-body.ws-open #dock,body.ws-open .logo,body.ws-open .replay,body.ws-open .zoombox,body.ws-open .tray,body.ws-open .panel,body.ws-open .shelf,body.ws-open .tstrip{display:none}
+body.ws-open #dock,body.ws-open .crumb,body.ws-open .hero,body.ws-open .logo,body.ws-open .replay,body.ws-open .zoombox,body.ws-open .tray,body.ws-open .panel,body.ws-open .shelf,body.ws-open .tstrip{display:none}
 
 /* ---- node types ---- */
 .node.suggestion .lbl{fill:var(--accent);font-style:italic}
@@ -611,6 +611,111 @@ body.panel-open .guide,body.plan-open .guide{display:none}
   body.plan-open .replay,body.plan-open .zoombox,body.plan-open .tray,body.plan-open #dock,body.plan-open .legend{display:none}
   .guide{left:8px;right:8px;width:auto;bottom:calc(env(safe-area-inset-bottom,0px) + 72px);top:auto}
 }
+
+/* ==== projects, start screen, record button ==== */
+/* breadcrumb next to the logo: Projects / current map */
+.crumb{position:fixed;top:calc(env(safe-area-inset-top,0px) + 14px);left:calc(max(16px, env(safe-area-inset-left,0px)) + 52px);z-index:5;height:44px;max-width:min(300px, calc(50vw - 300px));
+  display:flex;align-items:center;gap:8px;padding:0 14px 0 10px;cursor:pointer;font:inherit;color:var(--lbl);text-align:left}
+.crumb:hover{border-color:var(--line-2);color:var(--fg)}
+.crumb:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.crumb svg{width:17px;height:17px;flex:none}
+.crumb b{font-size:12.5px;font-weight:600;color:var(--fg)}
+.crumb i{font-style:normal;color:var(--line-2)}
+.crumb span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;font-size:12.5px}
+@media (max-width:1100px){.crumb span,.crumb i{display:none}.crumb{max-width:none}}
+
+/* the record button: the one big thing in the dock */
+#liveBtn{position:relative;flex:none;width:58px;height:58px;margin:-22px 10px -2px;border-radius:50%;border:4px solid var(--paper);cursor:pointer;display:grid;place-items:center;padding:0;
+  background:radial-gradient(circle at 35% 30%, #ff8a7a, var(--warn) 60%, #c9363b);color:#fff;
+  box-shadow:0 8px 22px rgba(229,72,77,.38), 0 2px 6px rgba(22,22,29,.12);transition:transform .15s ease, box-shadow .15s ease}
+#liveBtn:hover{transform:translateY(-2px) scale(1.04);box-shadow:0 12px 28px rgba(229,72,77,.45), 0 2px 6px rgba(22,22,29,.12)}
+#liveBtn:active{transform:scale(.96)}
+#liveBtn:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+#liveBtn .rec{width:20px;height:20px;border-radius:50%;background:#fff;transition:border-radius .2s ease, width .2s ease, height .2s ease}
+#liveBtn[aria-pressed="true"]{background:radial-gradient(circle at 35% 30%, #3b3b48, var(--fg) 70%)}
+#liveBtn[aria-pressed="true"] .rec{width:16px;height:16px;border-radius:4px;background:var(--warn)}
+#liveBtn[aria-pressed="true"]::before{content:'';position:absolute;inset:-8px;border-radius:50%;border:2px solid var(--warn);animation:recpulse 1.6s ease-out infinite;pointer-events:none}
+@keyframes recpulse{0%{transform:scale(.9);opacity:.9}100%{transform:scale(1.25);opacity:0}}
+#liveBtn .rec-time{position:absolute;top:-30px;left:50%;transform:translateX(-50%);padding:3px 9px;border-radius:999px;background:var(--warn);color:#fff;
+  font-family:var(--code);font-size:11px;line-height:16px;font-variant-numeric:tabular-nums;white-space:nowrap;box-shadow:0 4px 12px rgba(229,72,77,.3)}
+#liveBtn .rec-time:empty{display:none}
+#liveBtn .tlabel{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+body.live-on .tstrip{bottom:calc(env(safe-area-inset-bottom,0px) + 104px)}
+@media (max-width:760px){
+  #dock{-webkit-backdrop-filter:none;backdrop-filter:none;background:var(--paper)}  /* a filter would trap the fixed record button inside the dock */
+  #liveBtn{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 68px);margin:0;width:64px;height:64px;transform:translateX(-50%);z-index:7}
+  #liveBtn:hover,#liveBtn:active{transform:translateX(-50%)}
+  body.panel-open #liveBtn,body.shelf-open #liveBtn,body.plan-open #liveBtn,body.ws-open #liveBtn{display:none}
+  body.live-on .tstrip{bottom:calc(env(safe-area-inset-bottom,0px) + 148px)}
+  .zoombox{bottom:calc(env(safe-area-inset-bottom,0px) + 80px)}
+}
+
+/* start screen on a blank map */
+.hero{position:fixed;left:50%;top:50%;transform:translate(-50%,-56%);z-index:4;width:min(520px, calc(100vw - 32px));text-align:center;display:flex;flex-direction:column;align-items:center;gap:14px}
+.hero[hidden]{display:none}
+.hero .orb{position:relative;width:96px;height:96px;margin-bottom:6px;display:grid;place-items:center}
+.hero .orb::before,.hero .orb::after{content:'';position:absolute;inset:0;border-radius:50%;background:conic-gradient(from 200deg, var(--coral), var(--violet), var(--accent), var(--coral));opacity:.16;animation:breathe 4s ease-in-out infinite}
+.hero .orb::after{inset:14px;opacity:.28;animation-delay:-2s}
+.hero .orb svg{position:relative;width:44px;height:44px}
+@keyframes breathe{50%{transform:scale(1.08)}}
+.hero h1{margin:0;font-size:30px;font-weight:700;letter-spacing:-.025em;line-height:1.15}
+.hero .lede{margin:0;font-size:14.5px;line-height:1.6;color:var(--lbl);max-width:430px}
+.hero .steps{list-style:none;margin:8px 0 4px;padding:0;display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.hero .steps li{display:flex;align-items:center;gap:8px;padding:8px 12px 8px 8px;border-radius:999px;background:var(--surface);border:1px solid var(--line);font-size:12.5px;color:var(--lbl)}
+.hero .steps b{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent);font-size:11px;font-weight:700}
+.hero .cta{display:inline-flex;align-items:center;gap:10px;margin-top:6px;padding:13px 22px 13px 16px;border:0;border-radius:999px;cursor:pointer;
+  background:var(--fg);color:#fff;font:inherit;font-size:14px;font-weight:600;box-shadow:0 10px 26px rgba(22,22,29,.18);transition:transform .15s ease}
+.hero .cta:hover{transform:translateY(-1px)}
+.hero .cta:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+.hero .cta i{width:12px;height:12px;border-radius:50%;background:var(--warn);box-shadow:0 0 0 4px rgba(229,72,77,.25)}
+.hero .alt{display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:center;font-size:12.5px;color:var(--muted)}
+.hero .alt button{background:none;border:0;padding:4px 6px;border-radius:6px;font:inherit;color:var(--accent);cursor:pointer;font-weight:550}
+.hero .alt button:hover{background:var(--accent-soft)}
+.hero .listening{display:none;flex-direction:column;align-items:center;gap:10px}
+.hero .bars{display:flex;gap:5px;align-items:center;height:36px}
+.hero .bars i{width:5px;height:12px;border-radius:3px;background:var(--warn);animation:bar 1s ease-in-out infinite}
+.hero .bars i:nth-child(2){animation-delay:-.8s}.hero .bars i:nth-child(3){animation-delay:-.6s}.hero .bars i:nth-child(4){animation-delay:-.4s}.hero .bars i:nth-child(5){animation-delay:-.2s}
+@keyframes bar{50%{height:34px}}
+.hero .idle{display:contents}
+body.live-on .hero .idle{display:none}
+body.live-on .hero .listening{display:flex}
+body.empty-map #map > *{visibility:hidden}
+body.empty-map .legend,body.empty-map .replay,body.empty-map .zoombox,body.empty-map .zoomhint,body.empty-map .tray{display:none}
+body.empty-map #planBtn,body.empty-map #selBtn,body.empty-map #tidyBtn,body.empty-map #pathBtn{opacity:.4;pointer-events:none}
+@media (max-width:760px){.hero h1{font-size:24px}.hero .lede{font-size:13.5px}.hero .steps{display:none}}
+
+/* projects gallery */
+.projects{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:31;width:min(820px, calc(100vw - 32px));max-height:calc(100vh - 64px);
+  display:flex;flex-direction:column;background:var(--paper);border-radius:20px;box-shadow:var(--shadow-lg);overflow:hidden}
+.projects[hidden]{display:none}
+.pj-head{display:flex;align-items:center;gap:12px;padding:22px 24px 16px}
+.pj-head h2{margin:0;font-size:20px;font-weight:700;letter-spacing:-.02em}
+.pj-head p{margin:3px 0 0;font-size:12.5px;color:var(--muted)}
+.pj-head .close{margin-left:auto}
+.pj-grid{display:grid;grid-template-columns:repeat(auto-fill, minmax(220px, 1fr));gap:14px;padding:4px 24px 24px;overflow-y:auto}
+.pj-card{position:relative;display:flex;flex-direction:column;border:1px solid var(--line);border-radius:14px;background:var(--paper);overflow:hidden;transition:border-color .15s, box-shadow .15s, transform .15s}
+.pj-card:hover{border-color:var(--accent);box-shadow:0 0 0 4px var(--accent-soft);transform:translateY(-2px)}
+.pj-card.cur{border-color:var(--accent)}
+.pj-open{all:unset;cursor:pointer;display:flex;flex-direction:column}
+.pj-open:focus-visible{outline:2px solid var(--accent);outline-offset:-2px;border-radius:14px}
+.pj-prev{height:120px;background:var(--surface-2);background-image:radial-gradient(60% 80% at 0% 0%, rgba(255,122,89,.12), transparent 70%), radial-gradient(60% 80% at 100% 100%, rgba(58,85,230,.1), transparent 70%)}
+.pj-prev svg{width:100%;height:100%;display:block}
+.pj-body{padding:12px 14px 14px;display:flex;flex-direction:column;gap:5px}
+.pj-body b{font-size:14px;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pj-body small{font-size:11.5px;color:var(--muted)}
+.pj-tag{position:absolute;top:10px;left:10px;padding:3px 9px;border-radius:999px;font-size:10.5px;font-weight:650;background:var(--paper);color:var(--accent);box-shadow:var(--shadow);pointer-events:none}
+.pj-tag.now{left:auto;right:10px;background:var(--accent);color:#fff}
+.pj-del{position:absolute;bottom:10px;right:10px;width:28px;height:28px;border-radius:8px;border:0;background:none;color:var(--muted);cursor:pointer;display:grid;place-items:center;opacity:0}
+.pj-card:hover .pj-del,.pj-del:focus-visible{opacity:1}
+.pj-del:hover{background:#fdecec;color:var(--warn)}
+.pj-del svg{width:15px;height:15px}
+.pj-new{all:unset;box-sizing:border-box;cursor:pointer;min-height:198px;border:1.5px dashed var(--line-2);border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--lbl);font-size:13.5px;font-weight:600;transition:border-color .15s, background .15s}
+.pj-new:hover{border-color:var(--warn);background:#fff6f5;color:var(--fg)}
+.pj-new:focus-visible{outline:2px solid var(--accent)}
+.pj-new span{width:46px;height:46px;border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle at 35% 30%, #ff8a7a, var(--warn) 60%, #c9363b);box-shadow:0 6px 16px rgba(229,72,77,.3)}
+.pj-new span i{width:14px;height:14px;border-radius:50%;background:#fff}
+.pj-new small{font-weight:400;color:var(--muted);font-size:11.5px}
+@media (max-width:760px){.projects{top:auto;bottom:0;transform:translateX(-50%);width:100vw;border-radius:20px 20px 0 0;max-height:88vh}.pj-grid{grid-template-columns:1fr 1fr;gap:10px;padding:4px 14px 20px}.pj-prev{height:84px}.pj-new{min-height:150px}}
 </style>
 
 <svg id="map" aria-label="Map of the conversation. The main thread runs from start to end; tangents branch off each theme."></svg>
@@ -623,6 +728,33 @@ body.panel-open .guide,body.plan-open .guide{display:none}
     <circle cx="25" cy="7" r="1.1" fill="#fff"/>
   </svg>
 </div>
+
+<button type="button" class="crumb glass" id="crumb" aria-haspopup="dialog" aria-controls="projects" data-tip="All your meetings">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="3.5" width="7" height="7" rx="1.8"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.8"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.8"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.8"/></svg>
+  <b>Projects</b><i>/</i><span id="crumbTitle">New meeting</span>
+</button>
+
+<section class="hero" id="hero" hidden aria-labelledby="heroTitle">
+  <div class="orb" aria-hidden="true"><svg viewBox="0 0 32 32"><defs><linearGradient id="lg2" x1="4" y1="4" x2="28" y2="28" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#ff7a59"/><stop offset=".5" stop-color="#a98bff"/><stop offset="1" stop-color="#3a55e6"/></linearGradient></defs><path d="M8 25V12.5a5.5 5.5 0 0 1 11 0V25M19 12.5L25 7" fill="none" stroke="url(#lg2)" stroke-width="2.4" stroke-linecap="round"/><g fill="url(#lg2)"><circle cx="8" cy="25" r="3"/><circle cx="19" cy="25" r="3"/><circle cx="25" cy="7" r="3"/></g></svg></div>
+  <div class="idle">
+    <h1 id="heroTitle">Start a new meeting</h1>
+    <p class="lede">Hit record and talk. Neura listens and grows a mind map of your conversation as it happens: themes, tangents, questions and next steps.</p>
+    <ol class="steps"><li><b>1</b>Press record</li><li><b>2</b>Talk naturally</li><li><b>3</b>Watch the map grow</li></ol>
+    <button type="button" class="cta" id="heroRec"><i aria-hidden="true"></i>Start recording</button>
+    <div class="alt"><span>or</span><button type="button" id="heroExample">explore the example project</button><span>·</span><button type="button" id="heroImport">import a transcript</button></div>
+  </div>
+  <div class="listening" aria-live="polite">
+    <div class="bars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+    <h1>Listening…</h1>
+    <p class="lede">Keep talking. The first ideas appear here in about 15 seconds. Press the button below to stop.</p>
+  </div>
+</section>
+
+<section class="projects" id="projects" hidden role="dialog" aria-modal="true" aria-labelledby="pjTitle">
+  <header class="pj-head"><div><h2 id="pjTitle">Projects</h2><p>Every meeting you record is saved here, in this browser.</p></div>
+    <button class="close" type="button" data-pjclose aria-label="Close projects"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></header>
+  <div class="pj-grid" id="pjGrid"></div>
+</section>
 
 <div class="replay glass">
   <button type="button" class="play" id="play" aria-label="Replay the conversation"><svg width="13" height="13" viewBox="0 0 24 24" aria-hidden="true"><path id="playIcon" d="M7 4l13 8-13 8z" fill="currentColor"/></svg></button>
@@ -653,13 +785,12 @@ body.panel-open .guide,body.plan-open .guide{display:none}
     <button type="button" id="mTimeline" aria-pressed="true">Timeline</button>
     <button type="button" id="mMind" aria-pressed="false">Mind map</button>
   </div>
-  <span class="sep"></span>
+  <button type="button" id="liveBtn" aria-pressed="false" aria-label="Start recording" data-tip="Start recording"><span class="rec" aria-hidden="true"></span><span class="rec-time" id="recTime"></span><span class="tlabel">Record</span></button>
   <button type="button" class="tbtn" id="shelfBtn" aria-pressed="false" aria-controls="shelf" data-tip="Boards you opened from nodes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><rect x="3.5" y="7.5" width="12" height="12" rx="2"/><path d="M8.5 4.5h9a2 2 0 0 1 2 2v9"/></svg><span class="tlabel">Workspaces</span><span class="badge" id="shelfCount"></span></button>
   <!-- Transcript button hidden: the transcript feature isn't working yet.
   <button type="button" class="tbtn" id="transcriptBtn" aria-pressed="false" aria-controls="tdrawer" data-tip="Read what was said"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M5 6h14M5 10.5h14M5 15h9M5 19.5h6"/></svg><span class="tlabel">Transcript</span></button>
   -->
   <span class="sep"></span>
-  <button type="button" class="tbtn" id="liveBtn" aria-pressed="false" data-tip="Map a conversation as you talk"><span class="rec" aria-hidden="true"></span><span class="tlabel">Live</span></button>
   <button type="button" class="tbtn hot" id="planBtn" aria-pressed="false" data-tip="Turn this session into a checklist"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span class="tlabel">Next steps</span></button>
   <button type="button" class="tbtn" id="importBtn" data-tip="Rebuild the map from transcripts or PDFs"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V4M7.5 8.5L12 4l4.5 4.5"/><path d="M5 14v4.5A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5V14"/></svg><span class="tlabel">Import</span></button>
   <span class="sep"></span>
@@ -741,7 +872,7 @@ const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const store = {
   get(k){ try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; } catch (e) { return null; } },
-  set(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } },
+  set(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); if (k === 'neura-map') saveProject(v); return true; } catch (e) { return false; } },
   del(k){ try { localStorage.removeItem(k); } catch (e) {} }
 };
 function toast(msg, act){
@@ -813,6 +944,7 @@ function buildModel(map){
   cross = (map.cross || []).filter(([a, b]) => byId.has(a) && byId.has(b) && a !== b).map(([a, b]) => ({source: byId.get(a), target: byId.get(b)}));
   adj = new Map(nodes.map(n => [n.id, new Set()]));
   tree.concat(cross).forEach(l => { adj.get(l.source.id).add(l.target.id); adj.get(l.target.id).add(l.source.id); });
+  syncChrome();
 }
 
 function kindType(k){
@@ -1549,7 +1681,7 @@ function toggleGuide(force){
 }
 $('guideBtn').onclick = () => toggleGuide();
 $('guide').addEventListener('click', e => { if (e.target.closest('[data-gok], [data-gclose]')) toggleGuide(false); });
-if (!store.get('neura-guide-seen')) setTimeout(() => { if ($('ws').hidden && $('plan').hidden) toggleGuide(true); }, 700);
+if (!store.get('neura-guide-seen')) setTimeout(() => { if ($('ws').hidden && $('plan').hidden && THEMES.length) toggleGuide(true); }, 700);
 
 $('plan').addEventListener('change', e => {
   const k = e.target.dataset?.step; if (!k) return;
@@ -2095,7 +2227,7 @@ function renderSheet(msg, busy){
     ${!sample ? `<p class="err">Restructuring uses Claude inside the page, which isn't available in this view. Open this page in claude.ai to use it. Saved neura .json maps still load here.</p>` : ''}
     ${msg ? `<p class="${busy ? 'progress' : 'err'}">${busy ? '<span class="spin" aria-hidden="true"></span>' : ''}<span>${esc(msg)}</span></p>` : ''}
     <div class="actions">
-      ${store.get('neura-map') ? `<button class="linkish" type="button" data-reset style="margin-right:auto">reset to the sample session</button>` : ''}
+      ${MAP.id === 'sample' ? `<button class="linkish" type="button" data-reset style="margin-right:auto">reset the example project</button>` : ''}
       <button class="ghost" type="button" data-cancel>${busy ? 'stop' : 'cancel'}</button>
       <button class="go" type="button" data-run ${ok.length && !busy ? '' : 'disabled'}>restructure →</button>
     </div>`;
@@ -2104,7 +2236,7 @@ $('sheet').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return;
   if (b.hasAttribute('data-pickfiles')) return $('mapFiles').click();
   if (b.hasAttribute('data-cancel')) return closeImport();
-  if (b.hasAttribute('data-reset')){ checkpoint('reset'); store.del('neura-map'); loadMap(structuredClone(SAMPLE)); closeImport(); toast('back to the sample session'); return; }
+  if (b.hasAttribute('data-reset')){ checkpoint('reset'); store.del('neura-proj:sample'); loadMap(prepSample(structuredClone(SAMPLE))); closeImport(); toast('example project reset'); return; }
   if (b.hasAttribute('data-run')) runImport($('sheet').querySelector('input[name=how]:checked')?.value || 'merge');
 });
 
@@ -2565,7 +2697,9 @@ function heardAt(n){ const s = MAP.data[n.id]?.src; return Array.isArray(s) ? s[
 function transcriptLines(){ if (!Array.isArray(MAP.transcript)) MAP.transcript = []; return MAP.transcript; }
 
 // ---------- start / stop ----------
-$('liveBtn').onclick = () => live.on ? stopLive() : openLiveSheet();
+$('liveBtn').onclick = () => live.on ? stopLive() : record();
+// one press: record straight away. A blank map or the example starts a new meeting; your own project keeps growing.
+function record(){ closeProjects(); startLive('mic', MAP.id === 'sample' || !MAP.data.root.children.length); }
 function openLiveSheet(msg){
   $('backdrop').hidden = false; $('sheet').hidden = false;
   const has = !!(MAP.data.root.children.length);
@@ -2606,14 +2740,14 @@ async function startLive(kind, fresh, file){
   catch (err) { live.stream?.getTracks().forEach(t => t.stop()); live.stream = null; return openLiveSheet(/\.github\.io$/.test(location.hostname) && !HOSTED_API ? 'Live needs the Neura server, which GitHub Pages can’t run. Open the Vercel link instead, or run it locally with node server.js.' : 'Can’t reach the Neura server. Run it with: OPENROUTER_API_KEY=… node server.js, then open http://localhost:3000'); }
   closeImport();
   if (fresh){
-    const m = {id: 'live-' + Date.now(), title: 'live session · ' + new Date().toLocaleTimeString([], {hour: 'numeric', minute: '2-digit'}),
+    const m = {id: 'live-' + Date.now(), title: meetingTitle(),
       data: {root: {label: 'Live session', kind: 'Conversation', detail: 'A conversation mapped as it happens.', quote: '', children: []}}, cross: [], transcript: []};
     store.set('neura-map', m); loadMap(m, {fresh: true});
   }
   const lines = transcriptLines(), last = lines.length ? lines[lines.length - 1].t : -1;
   Object.assign(live, {on: true, kind, t0: Date.now(), tBase: last >= 0 ? Math.ceil(last) + 10 : 0, pending: [], busy: false, inflight: 0, follow: true,
     lastTheme: MAP.data.root.children[MAP.data.root.children.length - 1] || null});
-  document.body.classList.add('live-on'); $('liveBtn').setAttribute('aria-pressed', 'true'); $('liveBtn').querySelector('.tlabel').textContent = 'Stop';
+  document.body.classList.add('live-on'); setRecUI(true);
   $('status').innerHTML = `<span class="live">${kind === 'mic' ? 'live' : 'replay'}</span>`;
   $('tstrip').hidden = false; setLiveState(kind === 'mic' ? 'listening' : 'replaying'); renderStrip();
   live.pump = setInterval(maybeExtract, 1000);
@@ -2625,7 +2759,7 @@ function stopLive(){
   if (live.rec && live.rec.state !== 'inactive') live.rec.stop();
   live.stream?.getTracks().forEach(t => t.stop()); live.stream = null;
   live.ctx?.close().catch(() => {}); live.ctx = null;
-  document.body.classList.remove('live-on'); $('liveBtn').setAttribute('aria-pressed', 'false'); $('liveBtn').querySelector('.tlabel').textContent = 'Live';
+  document.body.classList.remove('live-on'); setRecUI(false);
   $('status').textContent = '';
   // flush what's left, then hide the strip once nothing is in flight
   const wrap = setInterval(() => {
@@ -2868,19 +3002,106 @@ function applyPatch(p, src){
 }
 function parentOfData(id){ for (const [k, v] of Object.entries(MAP.data)) if (v.children.includes(id)) return k; return null; }
 
+
+// ---------- projects: every meeting saved in this browser, plus the example ----------
+function meetingTitle(){ return 'Meeting · ' + new Date().toLocaleString([], {month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'}); }
+function blankMap(){ return {id: 'live-' + Date.now(), title: 'New meeting',
+  data: {root: {label: 'New meeting', kind: 'Conversation', detail: 'A conversation mapped as it happens.', quote: '', children: []}}, cross: [], transcript: []}; }
+function projIndex(){ const l = store.get('neura-projects'); return Array.isArray(l) ? l : []; }
+function saveProject(m){
+  if (!m?.data?.root || (!m.data.root.children.length && m.id !== 'sample')) return;
+  try { localStorage.setItem('neura-proj:' + m.id, JSON.stringify(m)); } catch (e) { return; }
+  if (m.id === 'sample') return;
+  const list = projIndex().filter(p => p.id !== m.id);
+  list.unshift({id: m.id, title: m.title, updated: Date.now(), nodes: Object.keys(m.data).length - 1, themes: m.data.root.children.length});
+  try { localStorage.setItem('neura-projects', JSON.stringify(list)); } catch (e) {}
+}
+function openProject(id){
+  if (live.on) return toast('Stop recording before switching projects.');
+  if (id === 'sample'){ const s = store.get('neura-proj:sample'); loadMap(prepSample(s?.data?.root ? s : structuredClone(SAMPLE)), {fresh: true}); }
+  else { const m = store.get('neura-proj:' + id); if (!m?.data?.root) return toast('That project couldn’t be found.'); loadMap(m, {fresh: true}); }
+  closeProjects();
+}
+function newMeeting(){ if (live.on) return toast('Stop recording first.'); loadMap(blankMap(), {fresh: true}); closeProjects(); }
+function syncChrome(){
+  const empty = !THEMES.length;
+  document.body.classList.toggle('empty-map', empty); $('hero').hidden = !empty;
+  $('crumbTitle').textContent = MAP.id === 'sample' ? 'Example project' : MAP.title;
+  document.title = 'Neura · ' + (empty && !live.on ? 'New meeting' : MAP.title);
+}
+// a tiny picture of the map: the spine with each theme and its branches
+function projPreview(m){
+  const d = m.data, th = d.root.children.filter(c => d[c] && !d[c].loose), W = 240, H = 120, n = Math.max(th.length, 1);
+  let s = `<svg viewBox="0 0 ${W} ${H}" aria-hidden="true">`;
+  if (!th.length) return s + `<circle cx="${W/2}" cy="${H/2}" r="6" fill="${ROOTC}" opacity=".5"/></svg>`;
+  const pts = th.map((c, i) => [24 + (W - 48) * (n === 1 ? .5 : i / (n - 1)), H / 2 + (i % 2 ? 14 : -14)]);
+  s += `<path d="M${pts.map(p => p.join(',')).join('L')}" fill="none" stroke="${ROOTC}" stroke-opacity=".35" stroke-width="2.5" stroke-linecap="round"/>`;
+  th.forEach((c, i) => { const col = PALETTE[i % PALETTE.length], [x, y] = pts[i], kids = d[c].children || [];
+    kids.slice(0, 7).forEach((k, j) => { const a = (j / Math.max(kids.length, 1)) * Math.PI * 2 + i, r = 18 + (j % 2) * 7, kx = x + Math.cos(a) * r, ky = y + Math.sin(a) * r * .8;
+      s += `<line x1="${x}" y1="${y}" x2="${kx.toFixed(1)}" y2="${ky.toFixed(1)}" stroke="${col}" stroke-opacity=".35"/><circle cx="${kx.toFixed(1)}" cy="${ky.toFixed(1)}" r="2.6" fill="${col}" opacity=".7"/>`; });
+    s += `<circle cx="${x}" cy="${y}" r="6.5" fill="${col}"/>`; });
+  return s + '</svg>';
+}
+function renderProjects(){
+  const mine = projIndex().map(p => ({...p, map: store.get('neura-proj:' + p.id)})).filter(p => p.map?.data?.root);
+  const ex = store.get('neura-proj:sample') || SAMPLE;
+  const card = (id, title, meta, map, tag) => `<article class="pj-card ${MAP.id === id ? 'cur' : ''}">
+      <button class="pj-open" type="button" data-pjopen="${esc(id)}"><div class="pj-prev">${projPreview(map)}</div>
+      <div class="pj-body"><b>${esc(title)}</b><small>${meta}</small></div></button>
+      ${tag ? `<span class="pj-tag">${tag}</span>` : ''}${MAP.id === id ? '<span class="pj-tag now">Open now</span>' : ''}
+      ${id !== 'sample' ? `<button class="pj-del" type="button" data-pjdel="${esc(id)}" aria-label="Delete ${esc(title)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 7h15M9.5 7V4.5h5V7M6.5 7l1 12.5h9l1-12.5"/></svg></button>` : ''}
+    </article>`;
+  $('pjGrid').innerHTML = `<button class="pj-new" type="button" data-pjnew><span><i></i></span>New meeting<small>Starts recording right away</small></button>`
+    + mine.map(p => card(p.id, p.title, `${p.nodes} ideas · ${p.themes} theme${p.themes === 1 ? '' : 's'} · ${ago(p.updated)}`, p.map)).join('')
+    + card('sample', 'Hackathon brainstorm', `${Object.keys(ex.data).length - 1} ideas · ${ex.data.root.children.length} themes · team session`, ex, 'Example');
+}
+function openProjects(){ renderProjects(); $('projects').hidden = false; $('backdrop').hidden = false; $('crumb').setAttribute('aria-expanded', 'true'); $('projects').querySelector('.pj-new').focus(); }
+function closeProjects(){ if ($('projects').hidden) return; $('projects').hidden = true; $('backdrop').hidden = true; $('crumb').setAttribute('aria-expanded', 'false'); }
+$('crumb').onclick = () => $('projects').hidden ? openProjects() : closeProjects();
+$('projects').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.hasAttribute('data-pjclose')) return closeProjects();
+  if (b.hasAttribute('data-pjnew')){ if (live.on) return toast('Already recording.'); loadMap(blankMap(), {fresh: true}); return record(); }
+  if (b.dataset.pjopen) return openProject(b.dataset.pjopen);
+  if (b.dataset.pjdel){
+    const id = b.dataset.pjdel, p = projIndex().find(x => x.id === id);
+    if (!confirm(`Delete “${p?.title || 'this project'}”? This can’t be undone.`)) return;
+    store.del('neura-proj:' + id); store.del('neura-plan:' + id); localStorage.setItem('neura-projects', JSON.stringify(projIndex().filter(x => x.id !== id)));
+    if (MAP.id === id) loadMap(blankMap(), {fresh: true});
+    renderProjects(); toast('project deleted');
+  }
+});
+$('backdrop').addEventListener('click', closeProjects);
+addEventListener('keydown', e => { if (e.key === 'Escape') closeProjects(); });
+$('heroRec').onclick = () => record();
+$('heroExample').onclick = () => openProject('sample');
+$('heroImport').onclick = () => $('importBtn').click();
+// recording timer on the button
+let recTick = null;
+function setRecUI(on){
+  const b = $('liveBtn'); b.setAttribute('aria-pressed', on); b.setAttribute('aria-label', on ? 'Stop recording' : 'Start recording'); b.dataset.tip = on ? 'Stop recording' : 'Start recording';
+  clearInterval(recTick); $('recTime').textContent = '';
+  if (on){ const t0 = Date.now(); const tick = () => $('recTime').textContent = fmtT((Date.now() - t0) / 1000); tick(); recTick = setInterval(tick, 1000); }
+  syncChrome();
+}
+
 // ---------- start ----------
-const savedMap = store.get('neura-map');
-let initial = structuredClone(SAMPLE);
-if (savedMap){ try { const m = savedMap.data?.root ? savedMap : null; if (m) initial = m; } catch (e) {} }
-if (initial.id === 'sample' && !Object.values(initial.data).some(d => typeof d.t === 'number')){
+// the example project: older saved copies get any nodes the sample has gained since
+function prepSample(initial){
+  if (Object.values(initial.data).some(d => typeof d.t === 'number')) return initial;
   Object.entries(SAMPLE.data).forEach(([id, d]) => { if (!initial.data[id]) return;
     d.children.forEach(c => { if (!initial.data[c]){ initial.data[c] = structuredClone(SAMPLE.data[c]); initial.data[c].children = []; initial.data[id].children.push(c); } }); });
   Object.entries(SAMPLE.data).forEach(([id, d]) => { if (initial.data[id] && SAMPLE.data[id].children.some(c => initial.data[c])) d.children.forEach(c => { if (initial.data[c] && !initial.data[id].children.includes(c)) initial.data[id].children.push(c); }); });
   initial.said = SAMPLE.said.slice();
   initial.cross = [...(initial.cross || []), ...SAMPLE.cross.filter(([a, b]) => !(initial.cross || []).some(([x, y]) => x === a && y === b))];
   Object.values(initial.data).forEach(d => { if (d.t <= -1) delete d.t; }); stampSaid(initial);
+  return initial;
 }
-loadMap(initial, {fresh: true});
+// carry over a map saved before projects existed
+const savedMap = store.get('neura-map');
+if (savedMap?.data?.root && !store.get('neura-projects')) saveProject(savedMap);
+// every visit opens on a fresh, blank meeting
+loadMap(blankMap(), {fresh: true});
 addEventListener('resize', () => { if ($('ws').hidden) fitAll(0); });
 })();
 </script>
