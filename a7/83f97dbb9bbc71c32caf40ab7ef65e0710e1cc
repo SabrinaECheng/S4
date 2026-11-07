@@ -1,0 +1,20 @@
+prototype/index.html
+  s_456b5bece8e11f::t_aa92f4a44f5171 61-63,637-652,1034-1036,1039-1041,1044-1050,1056,2009,2630-2636
+  s_456b5bece8e11f::t_7554aa1df90307 2629
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a783f97dbb9bbc71c32caf40ab7ef65e0710e1cc",
+  "prompts": {},
+  "sessions": {
+    "s_456b5bece8e11f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6a237228-8a1c-45a1-9e8d-38806a0826c6",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Sana Indap <sana@remihq.com>"
+    }
+  }
+}
