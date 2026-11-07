@@ -299,6 +299,32 @@ body.ws-open #dock,body.ws-open .logo,body.ws-open .replay,body.ws-open .zoombox
 .c-bar b i,.meter i{display:block;height:100%;background:var(--c)}
 .brow{display:grid;grid-template-columns:auto 1fr 56px;gap:9px;align-items:center}
 .meter{height:4px;border-radius:2px}
+.ntags{display:inline-flex;flex-wrap:wrap;gap:4px;align-items:center}
+.ntag{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:999px;font-size:10.5px;font-weight:500;line-height:1.5;background:var(--surface-2);color:var(--lbl);white-space:nowrap;border:1px solid transparent}
+.ntag.r-conversation{background:var(--accent);color:#fff}
+.ntag.r-main{background:var(--fg);color:#fff}
+.ntag.r-key{background:var(--accent-soft);color:var(--accent)}
+.ntag.r-tangent{background:none;border:1px dashed #d9714f;color:#a8441f}
+.ntag.r-detail{background:none;border-color:var(--line);color:var(--muted)}
+.ntags.sm{gap:2px}.ntags.sm .ntag{font-size:5.2px;padding:0 4px;gap:2px}
+.p-tags{margin-top:-6px}
+.c-tags{margin:1px 0}
+.c-kids{display:flex;flex-wrap:wrap;gap:2px;align-items:center;margin-top:3px;padding-top:4px;border-top:1px solid var(--line);font-size:5.4px;color:var(--lbl)}
+.c-kids small{font-family:var(--code);font-size:5px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-right:2px}
+.c-kids span{background:var(--surface-2);border-radius:999px;padding:1px 5px}
+.row .ntags{margin-left:auto;flex:none}
+.wsxs{display:flex;flex-direction:column;gap:8px}
+.wsx{display:flex;flex-direction:column;gap:6px;padding:8px 9px 9px;border:1px solid var(--line);border-left:3px solid var(--c);border-radius:10px;background:var(--paper)}
+.wsx > .row{padding:2px 0}
+.wsx > .ntags{margin-top:-2px}
+.snip{display:grid;grid-template-columns:1fr auto auto;gap:6px;align-items:center;padding:7px 8px;background:var(--surface-2);border-radius:8px}
+.snip p{grid-column:1/-1;margin:0;font-size:12px;line-height:1.45;color:var(--fg);white-space:pre-wrap;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+.snip-k{font-family:var(--code);font-size:9.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.mini{background:var(--paper);border:1px solid var(--line);border-radius:6px;padding:3px 8px;font-size:11px;color:var(--lbl);cursor:pointer;white-space:nowrap}
+.mini:hover{border-color:var(--accent);color:var(--accent)}
+.mini:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.wsx-act{display:flex;gap:6px;flex-wrap:wrap}
+.snip-empty{margin:0;font-size:11.5px;color:var(--muted)}
 .mixkey{display:flex;flex-wrap:wrap;gap:4px 10px;font-size:11px;color:var(--muted)}
 .mixkey span{display:inline-flex;align-items:center;gap:4px}
 
@@ -740,6 +766,22 @@ function mixOf(n){
   const m = {}; (function w(id){ byId.get(id).children.forEach(c => { const k = byId.get(c); m[k.type] = (m[k.type] || 0) + 1; w(c); }); })(n.id);
   delete m.hub; return m;
 }
+// where a thought sits in the conversation: the main thread (themes), key points, tangents, or details under them
+const TANGENT_RE = /tangent|what if|aside|digression|side story|reference/i;
+const ROLE_NAME = {conversation: 'whole conversation', main: 'main thread', key: 'key point', tangent: 'tangent', detail: 'detail'};
+function roleOf(n){
+  if (n.d === 0) return 'conversation';
+  if (n.d === 1) return 'main';
+  if (n.type === 'suggestion' || n.file) return null;
+  const r = MAP.data[n.id]?.role;
+  if (r === 'tangent') return 'tangent';
+  if (r !== 'main' && TANGENT_RE.test(String(n.kind || ''))) return 'tangent';
+  return n.d >= 3 ? 'detail' : 'key';
+}
+function tagsHTML(n, small){
+  const role = roleOf(n), type = n.type === 'hub' ? null : TYPE_NAME[n.type];
+  return `<span class="ntags${small ? ' sm' : ''}">${type ? `<span class="ntag">${typeIcon(n.type, n.color, small ? 6 : 9)}${esc(type)}</span>` : ''}${role ? `<span class="ntag r-${role}">${ROLE_NAME[role]}</span>` : ''}</span>`;
+}
 function mixBar(m, cls){ return `<div class="${cls}">${TYPES.filter(([t]) => m[t]).map(([t, name]) => `<i class="mx-${t}" style="flex:${m[t]}" title="${m[t]} ${name}"></i>`).join('')}</div>`; }
 let mode = 'timeline', step = 0, K = 1, lvl = 'far', selected = null, hoverId = null, showPath = true, playing = false, timer = null, selectMode = false;
 const folded = new Set(), picked = new Set();
@@ -829,7 +871,7 @@ function buildScene(){
   Object.values(L).forEach(g => { if (g.node().tagName === 'g') g.selectAll('*').remove(); });
   nebSel = L.neb.selectAll('circle').data(nodes.filter(n => n.d <= 2 && !n.file && !n.loose)).join('circle').attr('class','neb')
     .attr('r', n => n.d === 0 ? 220 : n.d === 1 ? 320 : 170).attr('fill', n => `url(#neb-${n.theme})`);
-  edgeSel = L.edges.selectAll('path').data(tree).join('path').attr('class','edge')
+  edgeSel = L.edges.selectAll('path').data(tree).join('path').attr('class','edge').attr('stroke-dasharray', l => roleOf(l.target) === 'tangent' ? '5 4' : null)
     .attr('stroke', l => l.target.color).attr('stroke-width', l => l.target.d === 1 ? 2 : 1.2).attr('stroke-opacity', l => l.target.d === 1 ? .55 : .42);
   crossSel = L.cross.selectAll('path').data(cross).join('path').attr('class','cross');
   tickSel = L.ticks.selectAll('text').data(['root', ...THEMES]).join('text').attr('class','tick').attr('text-anchor','middle')
@@ -896,18 +938,18 @@ function cardHTML(n){
   const direct = wsIdx.get(n.id) || [], branch = branchWs(n);
   const kids = n.children.map(id => byId.get(id));
   let viz = '';
-  if (kids.length){
+  if (kids.length && n.d <= 1){   // size bars only for themes; smaller branches just list what's in them
     const top = kids.slice().sort((a, b) => b.w - a.w).slice(0, 4), mw = top[0].w;
     viz = `<div class="c-viz"><small><span>inside · ${n.desc}</span><span>by size</span></small>${mixBar(mixOf(n), 'c-mix')}
       ${top.map(k => `<div class="c-bar">${typeIcon(k.type, k.color, 6)}<span>${esc(k.label)}</span><b><i style="width:${Math.max(6, Math.round(k.w / mw * 100))}%"></i></b></div>`).join('')}
       ${kids.length > 4 ? `<small><span>+${kids.length - 4} more</span><span></span></small>` : ''}</div>`;
   }
   return `<div class="c-head">${typeIcon(n.type, n.color, 7)}<span>${esc(n.kind)}</span><span>#${String(n.i + 1).padStart(2,'0')}</span></div>
-    <div class="c-title">${esc(n.label)}</div>${n.file?.img ? `<img class="c-img" src="${esc(n.file.img)}" alt="">` : ''}<div class="c-body">${esc(n.detail)}</div>
-    ${n.quote ? `<div class="c-quote">“${esc(n.quote)}”</div>` : ''}${viz}
+    <div class="c-title">${esc(n.label)}</div>${n.d >= 2 ? `<div class="c-tags">${tagsHTML(n, true)}</div>` : ''}${n.file?.img ? `<img class="c-img" src="${esc(n.file.img)}" alt="">` : ''}<div class="c-body">${esc(n.detail)}</div>
+    ${n.quote ? `<div class="c-quote">“${esc(n.quote)}”</div>` : ''}${viz}${n.d >= 2 && kids.length ? `<div class="c-kids"><small>inside</small>${kids.map(k => `<span>${esc(k.label)}</span>`).join('')}</div>` : ''}
     ${direct.length || branch.length ? `<div class="c-ws">
       ${direct.length ? `<small>workspaces</small>${direct.slice(0, 3).map(w => `<button type="button" data-ws="${esc(w.key)}">${esc(wsName(w))}</button>`).join('')}${direct.length > 3 ? `<small>+${direct.length - 3} more in the panel</small>` : ''}` : ''}
-      ${branch.length ? `<small>${branch.length} nested deeper in this branch</small>` : ''}</div>` : ''}`;
+      ${branch.length ? `<small>in this branch</small>${branch.slice(0, 3).map(w => `<button type="button" data-ws="${esc(w.key)}">${esc(wsName(w))}</button>`).join('')}${branch.length > 3 ? `<small>+${branch.length - 3} more in the panel</small>` : ''}` : ''}</div>` : ''}`;
 }
 let wsHoverIds = null, spot = null;
 function paint(){
@@ -1128,22 +1170,23 @@ function renderPanel(n){
   const kidRow = k => `<button class="row brow" type="button" data-go="${k.id}" style="--c:${k.color}">${typeIcon(k.type, k.color)}<span>${esc(k.label)}</span><span class="meter" aria-hidden="true"><i style="width:${Math.max(6, Math.round(k.w / mw * 100))}%"></i></span></button>`;
   panel.innerHTML = `${head}
     <p class="meta">${typeLabel} · ${esc(String(n.kind).toLowerCase())} · thought #${String(n.i + 1).padStart(2,'0')} of ${N}</p>
+    ${n.d >= 1 ? `<div class="p-tags">${tagsHTML(n)}</div>` : ''}
     <div class="actions">
       <button class="go" type="button" data-enter>${picked.size > 1 && isPicked ? `enter workspace (${picked.size}) →` : hasOwn ? 'open its workspace →' : 'new workspace →'}</button>
       <button class="ghost" type="button" data-pick>${isPicked ? '− remove from selection' : '+ add to selection'}</button>
     </div>
     ${fileKids(n).length ? `<section><h3>files attached · ${fileKids(n).length}</h3><div class="rows">${fileKids(n).map(c => `<button class="row" type="button" data-file="${c.id}">${typeIcon('file', n.color)}<span>${esc(c.label)}<small>${esc(String(c.kind).toLowerCase())}${c.file?.pages ? ` · ${c.file.pages} pages` : ''}</small></span></button>`).join('')}</div></section>` : ''}
-    ${direct.length ? `<section><h3>workspaces in this node</h3><div class="rows">${direct.map(wsRow).join('')}</div></section>` : ''}
-    ${branch.length ? `<section><h3>nested deeper in this branch</h3><div class="rows">${branch.map(wsRow).join('')}</div></section>` : ''}
+    ${wsPanelHTML(n)}
     <section><h3>summary</h3><p class="body-text">${esc(n.detail)}</p></section>
     ${n.quote || heardAt(n) != null ? `<section><h3>from transcript</h3>${n.quote ? `<blockquote>“${esc(n.quote)}”</blockquote>` : ''}
       ${heardAt(n) != null ? `<button class="linkish" type="button" data-heard="${heardAt(n)}">heard at ${fmtT(heardAt(n))} · show in transcript →</button>` : ''}</section>` : ''}
     ${par ? `<section><h3>branched from</h3><div class="rows">${row(par)}</div></section>` : ''}
-    ${kids.length ? `<section><h3>inside this node · by size</h3>
+    ${kids.length && n.d <= 1 ? `<section><h3>inside this node · by size</h3>
       <div style="--c:${n.color}">${mixBar(mix, 'mix')}</div>
       <div class="mixkey">${TYPES.filter(([t]) => mix[t]).map(([t, name]) => `<span>${typeIcon(t, n.color, 9)}${mix[t]} ${mix[t] === 1 ? name.replace(/s$/, '') : name}</span>`).join('')}</div>
       <div class="rows">${kids.slice().sort((a, b) => b.w - a.w).map(kidRow).join('')}</div>
       <button class="btn" type="button" data-fold>${folded.has(n.id) ? 'unfold this branch' : 'fold this branch'}</button></section>` : ''}
+    ${kids.length && n.d > 1 ? `<section><h3>inside this node</h3><div class="rows">${kids.map(k => `<button class="row" type="button" data-go="${k.id}">${typeIcon(k.type, k.color)}<span>${esc(k.label)}</span>${tagsHTML(k)}</button>`).join('')}</div></section>` : ''}
     ${n.d > 0 ? `<section><h3>explore further</h3><p class="body-text" style="color:var(--muted)">AI suggestions show up as dashed nodes around this one. Keep the useful ones.</p>
       <button class="btn" type="button" data-suggest>✦ suggest follow-ups</button></section>` : ''}
     ${links.length ? `<section><h3>also connects to</h3><div class="rows">${links.map(row).join('')}</div></section>` : ''}
@@ -1157,6 +1200,7 @@ panel.addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b || !selected) return;
   if (b.hasAttribute('data-close')) return closePanel();
   if (b.dataset.wsopen) return openWsKey(b.dataset.wsopen);
+  if (wsAction(b, selected)) return;
   if (b.dataset.heard != null) return openTranscript(+b.dataset.heard);
   if (b.hasAttribute('data-suggest')) return suggestFor(selected, b);
   if (b.hasAttribute('data-keep')){ checkpoint('keep suggestion'); MAP.data[selected.id].ai = false; rebuild(); toast('kept on the map'); return; }
@@ -1282,13 +1326,15 @@ function renderPop(n){
   const pop = $('pop'); pop.style.setProperty('--c', n.color);
   pop.innerHTML = `<div class="pp-head">${typeIcon(n.type, n.color, 12)}<span class="pp-type">${n.type === 'hub' ? (n.d === 0 ? 'conversation' : 'theme') : TYPE_NAME[n.type]}</span>${theme && theme !== n ? `<span class="pp-theme">· ${esc(theme.label)}</span>` : ''}<button class="close" type="button" aria-label="Close" data-close>×</button></div>
     <h3>${esc(n.label)}</h3>
+    ${n.d >= 1 ? `<div>${tagsHTML(n)}</div>` : ''}
     <p class="pp-meta">${esc(String(n.kind || '').toLowerCase())}${n.d > 0 ? ` · thought #${String(n.i + 1).padStart(2,'0')} of ${N}` : ''}${n.desc ? ` · ${n.desc} inside` : ''}</p>
     ${f?.img ? `<img class="pp-img" src="${esc(f.img)}" alt="">` : ''}
     ${n.detail ? `<p class="pp-body">${esc(n.detail)}</p>` : ''}
     ${heardAt(n) != null ? `<button class="linkish" type="button" data-heard="${heardAt(n)}">heard at ${fmtT(heardAt(n))} · show in transcript →</button>` : ''}
     ${f?.url ? `<a class="go" href="${esc(f.url)}" target="_blank" rel="noopener noreferrer" style="text-decoration:none;align-self:flex-start">open link ↗</a>` : ''}
+    ${wsPopHTML(n)}
     ${qs.length ? `<div class="pp-sec"><h4>quotes · ${qs.length}</h4>${qs.map(q => `<blockquote>“${esc(q.q)}”${q.from ? `<cite data-go="${q.from.id}">— from ${esc(q.from.label)}</cite>` : ''}</blockquote>`).join('')}</div>` : ''}
-    ${kids.length ? `<div class="pp-sec"><h4>inside · ${n.desc}</h4><div style="--c:${n.color}">${mixBar(mixOf(n), 'mix')}</div><div class="pp-tags">${kids.slice(0, 8).map(tag).join('')}${kids.length > 8 ? `<span class="pp-meta" style="margin:0">+${kids.length - 8} more</span>` : ''}</div></div>` : ''}
+    ${kids.length ? `<div class="pp-sec"><h4>inside · ${n.desc}</h4>${n.d <= 1 ? `<div style="--c:${n.color}">${mixBar(mixOf(n), 'mix')}</div>` : ''}<div class="pp-tags">${kids.slice(0, 8).map(tag).join('')}${kids.length > 8 ? `<span class="pp-meta" style="margin:0">+${kids.length - 8} more</span>` : ''}</div></div>` : ''}
     ${par || links.length ? `<div class="pp-sec"><h4>connected to</h4><div class="pp-tags">${[...(par ? [par] : []), ...links].map(tag).join('')}</div></div>` : ''}
     <div class="pp-actions"><button class="go" type="button" data-more>all details →</button>${n.d > 0 ? `<button class="ghost" type="button" data-wsgo>workspace</button>` : ''}</div>`;
 }
@@ -1304,6 +1350,8 @@ $('pop').addEventListener('click', e => {
   const b = e.target.closest('button, cite'); if (!b || !popNode) return;
   const n = popNode;
   if (b.hasAttribute('data-close')) return closePop();
+  if (b.dataset.wsopen){ closePop(); return openWsKey(b.dataset.wsopen); }
+  if (wsAction(b, n)) return;
   if (b.hasAttribute('data-more')) return select(n, false);
   if (b.dataset.heard != null){ closePop(); return openTranscript(+b.dataset.heard); }
   if (b.hasAttribute('data-wsgo')){ closePop(); return openWorkspace([n.id]); }
@@ -1954,12 +2002,13 @@ async function runImport(how){
   const current = how === 'merge' ? JSON.stringify(compactMap(MAP)) : '';
   const prompt = `You turn brainstorm conversations into an idea map for an app called Neura.
 Reply with ONLY this JSON shape:
-{"title": string, "nodes": [{"id": string, "parent": string|null, "label": string, "kind": string, "detail": string, "quote": string}], "cross": [[string, string]]}
+{"title": string, "nodes": [{"id": string, "parent": string|null, "label": string, "kind": string, "role": "main"|"tangent", "detail": string, "quote": string}], "cross": [[string, string]]}
 Rules:
 - Exactly one node has parent null: the whole conversation, kind "Conversation".
 - Its children are 3 to 7 themes, listed in the order they first came up in the conversation.
 - Below each theme, ideas, questions, examples, references, tasks and tangents, at most 3 levels below the root.
 - 25 to 60 nodes in total. List nodes in the order they were said; a parent always comes before its children.
+- role: "tangent" when the speakers drifted off the main line of thought (an aside, a what-if, a side story); otherwise "main".
 - id: short unique snake_case. label: at most 6 words. kind: one of Theme, Main concept, Idea, Question, Example, Reference, Task, Outcome, Tangent, Supporting detail.
 - detail: one or two plain sentences on what was said. quote: a short exact excerpt from the transcript (under 15 words), or "".
 - cross: up to 8 pairs of node ids from different themes that the speakers connected.
@@ -1998,7 +2047,7 @@ function toMap(j, source){
   const rootSrc = list.find(n => n._p == null) || list[0];
   const ren = id => id === rootSrc._id ? 'root' : (id === 'root' ? 'root_' : id);
   const data = {};
-  list.forEach(n => data[ren(n._id)] = {label: String(n.label).slice(0, 70), kind: String(n.kind || 'Idea').slice(0, 30), detail: String(n.detail || '').slice(0, 500), quote: String(n.quote || '').slice(0, 200), children: []});
+  list.forEach(n => data[ren(n._id)] = {label: String(n.label).slice(0, 70), kind: String(n.kind || 'Idea').slice(0, 30), detail: String(n.detail || '').slice(0, 500), quote: String(n.quote || '').slice(0, 200), children: [], ...(n.role === 'tangent' || n.role === 'main' ? {role: n.role} : {})});
   list.forEach(n => { if (n === rootSrc) return; const me = ren(n._id); let p = n._p == null ? 'root' : ren(n._p); if (!data[p] || p === me) p = 'root'; data[p].children.push(me); });
   const reach = new Set();
   const w = id => { reach.add(id); const keep = []; for (const c of data[id].children){ if (!reach.has(c)){ keep.push(c); w(c); } } data[id].children = keep; };
@@ -2036,6 +2085,71 @@ function branchWs(n){
   if (!n.children.length) return [];
   const ds = descendants(n), direct = new Set((wsIdx.get(n.id) || []).map(w => w.key));
   return wsAll.filter(w => w.mapId === MAP.id && !direct.has(w.key) && w.ids.some(id => ds.has(id)));
+}
+// every workspace on this node and anywhere below it, so notes can be copied or pulled up from wherever they were written
+function wsEntries(n){
+  const own = (wsIdx.get(n.id) || []).map(w => ({w, from: n})), seen = new Set(own.map(o => o.w.key)), deeper = [], ds = descendants(n);
+  nodes.filter(m => ds.has(m.id)).forEach(m => (wsIdx.get(m.id) || []).forEach(w => { if (!seen.has(w.key)){ seen.add(w.key); deeper.push({w, from: m}); } }));
+  return [...own, ...deeper];
+}
+// the useful content of a workspace: notes, text and files people added (not the untouched copies of map nodes it starts with)
+function wsSnips(w){
+  const v = w && store.get(w.key); if (!v) return [];
+  return (v.items || []).map(it => {
+    if (it.type === 'sticky' || it.type === 'text'){
+      const text = String(it.text || '').trim(); if (!text) return null;
+      const c = String(it.id).startsWith('s_') ? byId.get(String(it.id).slice(2)) : null;
+      if (c && it.text === c.label + (c.detail ? '\n\n' + c.detail : '')) return null;
+      return {id: it.id, kind: it.ai ? 'ai note' : it.type === 'sticky' ? 'note' : 'text', text, it};
+    }
+    if (it.type === 'file') return {id: it.id, kind: 'file', text: it.name + (it.note ? ' · ' + it.note : ''), it};
+    return null;
+  }).filter(Boolean);
+}
+function wsBlock({w, from}, n, full){
+  const sn = wsSnips(w), here = from === n, shown = full ? sn.slice(0, 4) : sn.slice(0, 1), k = esc(w.key);
+  return `<div class="wsx" style="--c:${from.color}">
+    <button class="row" type="button" data-wsopen="${k}"><span class="wsico" aria-hidden="true"></span><span>${esc(wsName(w))}<small>${here ? 'this node' : 'from ' + esc(from.label)} · ${wsMeta(w)}</small></span></button>
+    ${here ? '' : tagsHTML(from)}
+    ${shown.map(x => `<div class="snip"><p>${esc(x.text)}</p><span class="snip-k">${x.kind}</span>
+      <button type="button" class="mini" data-wskey="${k}" data-wscopy="${esc(x.id)}">copy</button>${here ? '' : `<button type="button" class="mini" data-wskey="${k}" data-wspull="${esc(x.id)}">pull here</button>`}</div>`).join('')}
+    ${sn.length > shown.length ? `<p class="snip-empty">+${sn.length - shown.length} more ${full ? 'inside' : 'in all details'}</p>` : ''}
+    ${sn.length ? `<div class="wsx-act"><button type="button" class="mini" data-wskey="${k}" data-wscopy="*">copy all</button>${here ? '' : `<button type="button" class="mini" data-wskey="${k}" data-wspull="*">pull all here</button>`}</div>`
+      : `<p class="snip-empty">Nothing written here yet.</p>`}
+  </div>`;
+}
+function wsPanelHTML(n){
+  const all = wsEntries(n), branch = n.children.length > 0;
+  if (!all.length) return branch ? `<section><h3>workspaces in this branch</h3><p class="body-text" style="color:var(--muted)">None yet. Open a workspace on any idea in this branch and its notes collect here, ready to copy or pull up.</p></section>` : '';
+  return `<section><h3>${branch ? 'workspaces in this branch' : 'workspaces'} · ${all.length}</h3><div class="wsxs">${all.map(e => wsBlock(e, n, true)).join('')}</div></section>`;
+}
+function wsPopHTML(n){
+  const all = wsEntries(n); if (!all.length) return '';
+  return `<div class="pp-sec"><h4>workspaces · ${all.length}</h4><div class="wsxs">${all.slice(0, 3).map(e => wsBlock(e, n, false)).join('')}</div>${all.length > 3 ? `<p class="pp-meta" style="margin:0">+${all.length - 3} more in all details</p>` : ''}</div>`;
+}
+async function copyText(t){
+  try { await navigator.clipboard.writeText(t); return true; }
+  catch (e){ const ta = document.createElement('textarea'); ta.value = t; ta.style.position = 'fixed'; ta.style.opacity = '0'; document.body.append(ta); ta.select(); let ok = false; try { ok = document.execCommand('copy'); } catch (e2) {} ta.remove(); return ok; }
+}
+function wsAction(b, n){
+  if (b.dataset.wscopy == null && b.dataset.wspull == null) return false;
+  const w = wsAll.find(x => x.key === b.dataset.wskey); if (!w || !n) return true;
+  const id = b.dataset.wscopy ?? b.dataset.wspull, sn = wsSnips(w).filter(x => id === '*' || x.id === id);
+  if (!sn.length) return true;
+  if (b.dataset.wscopy != null){
+    copyText(sn.map(x => x.text).join('\n\n')).then(ok => toast(ok ? (sn.length === 1 ? 'copied' : `copied ${sn.length} notes`) : 'couldn’t copy in this browser'));
+    return true;
+  }
+  // pull: add copies to this node's own workspace, stacked in a new column, each tagged with where it came from
+  const dest = wsKey([n.id]), saved = store.get(dest), items = saved?.items ? saved.items.slice() : seedItems([n.id]);
+  const x0 = items.reduce((a, i) => Math.max(a, i.x || 0), 0) + 320, src = wsName(w), stamp = Date.now().toString(36);
+  sn.forEach((x, i) => { const c = structuredClone(x.it); c.id = 'p_' + stamp + i; c.x = x0; c.y = i * 230;
+    if (c.type === 'text'){ c.type = 'sticky'; c.color = n.color; } if (c.type === 'sticky') c.tag = 'from ' + src; items.push(c); });
+  const ok = store.set(dest, {name: saved?.name || '', updated: Date.now(), mapTitle: MAP.title, labels: [n.label], items});
+  indexWs(); refreshWs();
+  if (selected) renderPanel(selected); if (popNode) renderPop(popNode);
+  toast(ok ? `pulled ${sn.length === 1 ? 'a note' : sn.length + ' notes'} into ${n.label}` : 'couldn’t save (browser storage is off or full)', ok ? {label: 'open workspace →', fn: () => openWorkspace([n.id])} : undefined);
+  return true;
 }
 function wsName(w){
   if (w.name) return w.name;
