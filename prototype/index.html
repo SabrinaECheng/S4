@@ -310,6 +310,9 @@ body.shelf-open .zoomlvl{display:none}
 .node.file .fglyph{fill:none;stroke:var(--bg);stroke-width:1;pointer-events:none;opacity:.85}
 .node.file .lbl{fill:#d8e2ef}
 .node.loose .lbl{font-style:italic}
+.node.page .lbl{display:none}
+.node.page.lit .lbl,.node.page.sel .lbl{display:inline!important}
+.node.page .fglyph{display:none}
 .node.droptarget .body{stroke:#fff;stroke-width:2.2}
 .node.droptarget .lbl{display:inline!important;fill:#fff;opacity:1!important}
 .node.dropfade{opacity:.35}
@@ -389,7 +392,8 @@ body.shelf-open .zoomlvl{display:none}
 <div class="dropbar glass" id="dropbar" hidden><span data-z="node"><i class="k-node"></i>near a node · attach</span><span data-z="cloud"><i class="k-cloud"></i>inside a cloud · add to theme</span><span data-z="free"><i class="k-free"></i>open space · leave loose</span></div>
 <div class="backdrop" id="backdrop" hidden></div>
 <section class="sheet glass" id="sheet" hidden role="dialog" aria-modal="true" aria-labelledby="sheetTitle"></section>
-<input type="file" id="mapFiles" multiple accept=".txt,.md,.markdown,.vtt,.srt,.json,text/plain" hidden>
+<input type="file" id="mapFiles" multiple accept=".txt,.md,.markdown,.vtt,.srt,.json,.pdf,text/plain,application/pdf" hidden>
+<input type="file" id="pdfAgain" accept=".pdf,application/pdf" hidden>
 <div class="toast glass" id="toast" hidden></div>
 
 <!-- workspace -->
@@ -457,7 +461,7 @@ function buildModel(map){
   nodes = order.map((id, i) => {
     const s = data[id], d = depth[id], loose = !!s.loose;
     const type = s.ai ? 'suggestion' : s.file ? 'file' : d <= 1 ? 'hub' : kindType(String(s.kind || ''));
-    return {id, i, d, type, ai: !!s.ai, loose, file: s.file || null, theme: theme[id], color: loose ? LOOSEC : color[theme[id]], label: s.label, kind: s.ai ? 'AI suggestion' : s.kind, detail: s.detail, quote: s.quote, children: s.children};
+    return {id, i, d, type, ai: !!s.ai, loose, file: s.file || null, pageOf: s.page ? parentOf[id] : null, page: s.page || 0, theme: theme[id], color: loose ? LOOSEC : color[theme[id]], label: s.label, kind: s.ai ? 'AI suggestion' : s.kind, detail: s.detail, quote: s.quote, children: s.children};
   });
   const sub = id => data[id].children.reduce((a, c) => a + 1 + sub(c), 0);
   nodes.forEach(n => {
@@ -466,6 +470,8 @@ function buildModel(map){
     n.r = n.type === 'suggestion' ? 5 : n.type === 'file' ? 5.6 : R[Math.min(n.d, 3)] * Math.min(1.6, .78 + Math.sqrt(n.w) * .16);
   });
   byId = new Map(nodes.map(n => [n.id, n]));
+  // pages sit in a small grid (a contact sheet) under their PDF, in reading order
+  nodes.forEach(n => { if (!n.pageOf) return; const j = n.page - 1; n.ox = (j % 4 - 1.5) * 26; n.oy = 30 + Math.floor(j / 4) * 26; n.r = 4.4; });
   tree = nodes.filter(n => n.d > 0 && !n.loose).map(n => ({source: byId.get(parentOf[n.id]), target: n}));
   cross = (map.cross || []).filter(([a, b]) => byId.has(a) && byId.has(b) && a !== b).map(([a, b]) => ({source: byId.get(a), target: byId.get(b)}));
   adj = new Map(nodes.map(n => [n.id, new Set()]));
@@ -544,12 +550,17 @@ function hiddenByFold(n){ let id = parentOf[n.id]; while (id){ if (folded.has(id
 
 // ---------- simulation ----------
 const collide = d3.forceCollide(), fx = d3.forceX(), fy = d3.forceY(), charge = d3.forceManyBody().distanceMax(220);
-const sim = d3.forceSimulation().force('x', fx).force('y', fy).force('collide', collide).force('charge', charge).stop();
+const sim = d3.forceSimulation().force('x', fx).force('y', fy).force('collide', collide).force('charge', charge).force('pages', pageForce).stop();
+function pageForce(alpha){
+  const sp = lvl === 'near' ? 7 : 1;
+  for (const n of nodes){ if (!n.pageOf) continue; const p = byId.get(n.pageOf); if (!p) continue;
+    n.vx += (p.x + n.ox * sp - n.x) * .5 * alpha * 4; n.vy += (p.y + n.oy * sp - n.y) * .5 * alpha * 4; }
+}
 function refreshForces(){
-  fx.x(n => n.tx).strength(n => n.d <= 1 ? .9 : .32);
-  fy.y(n => n.ty).strength(n => n.d <= 1 ? .9 : .32);
-  collide.radius(n => !shown(n) ? 0 : lvl === 'near' ? 112 : n.r + 16).strength(.9);
-  charge.strength(n => shown(n) ? -30 : 0);
+  fx.x(n => n.tx).strength(n => n.pageOf ? 0 : n.d <= 1 ? .9 : .32);
+  fy.y(n => n.ty).strength(n => n.pageOf ? 0 : n.d <= 1 ? .9 : .32);
+  collide.radius(n => !shown(n) ? 0 : lvl === 'near' ? 112 : n.pageOf ? n.r + 6 : n.r + 16).strength(.9);
+  charge.strength(n => shown(n) && !n.pageOf ? -30 : 0);
 }
 function reflow(a){ refreshForces(); if (RM){ for (let i = 0; i < 200; i++) sim.tick(); tick(); } else sim.alpha(a).restart(); }
 
@@ -579,7 +590,7 @@ function buildScene(){
   tickSel = L.ticks.selectAll('text').data(['root', ...THEMES]).join('text').attr('class','tick').attr('text-anchor','middle')
     .text((t, i) => i === 0 ? 'START' : i === THEMES.length ? 'LATER IN SESSION' : `0${i} · CONVERSATION`);
   nodeSel = L.nodes.selectAll('g').data(nodes, n => n.id).join(enter => {
-    const g = enter.append('g').attr('class', n => 'node d' + Math.min(n.d, 3) + ' ' + n.type + (n.loose ? ' loose' : ''));
+    const g = enter.append('g').attr('class', n => 'node d' + Math.min(n.d, 3) + ' ' + n.type + (n.loose ? ' loose' : '') + (n.pageOf ? ' page' : ''));
     g.append('circle').attr('class','pickring').attr('r', n => n.r + 7);
     // files are small rounded squares (a page) so they read differently from spoken thoughts
     g.append(n => document.createElementNS('http://www.w3.org/2000/svg', n.type === 'file' ? 'rect' : 'circle')).attr('class','body')
@@ -698,9 +709,9 @@ function dStart(e, n){ if (!e.active && !RM) sim.alphaTarget(.12).restart(); n.f
 function dMove(e, n){
   n.fx = e.x; n.fy = e.y; if (RM){ n.x = e.x; n.y = e.y; tick(); }
   if (!n._moved && Math.hypot(e.x - n._from.x, e.y - n._from.y) * K > 4) n._moved = true;
-  if (n.type === 'file' && n._moved) refileMove(e, n);   // dropped files can be re-filed by dragging
+  if (n.type === 'file' && !n.pageOf && n._moved) refileMove(e, n);   // dropped files can be re-filed by dragging
 }
-function dEnd(e, n){ if (!e.active) sim.alphaTarget(0); if (n.type === 'file' && n._moved) refileEnd(n); }
+function dEnd(e, n){ if (!e.active) sim.alphaTarget(0); if (n.type === 'file' && !n.pageOf && n._moved) refileEnd(n); }
 $('tidyBtn').onclick = () => { nodes.forEach(n => { n.fx = null; n.fy = null; }); applyPins(); reflow(.6); };
 
 // ---------- modes ----------
@@ -781,12 +792,34 @@ function renderPanel(n){
   }
   if (n.type === 'file'){
     const f = n.file, home = n.loose ? 'loose on the map' : par ? `attached to ${par.d === 1 ? 'the cloud' : ''} ${par.label}` : '';
+    if (n.pageOf){
+      const pdf = byId.get(n.pageOf), sib = pdf.children.map(id => byId.get(id)).filter(c => c.pageOf);
+      const prevP = sib[sib.indexOf(n) - 1], nextP = sib[sib.indexOf(n) + 1];
+      panel.innerHTML = `${head}<p class="meta">page ${n.page} of ${pdf.file?.pages || sib.length} · from ${esc(pdf.label)}</p>
+        ${f.img ? `<img class="fprev" src="${esc(f.img)}" alt="Page ${n.page}">` : ''}
+        <section><h3>text on this page</h3>${f.text ? `<pre class="ftext">${esc(f.text)}</pre>` : `<p class="body-text" style="color:var(--muted)">No selectable text on this page.</p>`}</section>
+        <section><h3>pages</h3><div class="navrow">
+          <button class="btn" type="button" data-go="${prevP ? prevP.id : ''}" ${prevP ? '' : 'disabled'}><small>← previous</small><span>${prevP ? 'page ' + prevP.page : 'first page'}</span></button>
+          <button class="btn" type="button" data-go="${nextP ? nextP.id : ''}" ${nextP ? '' : 'disabled'}><small>next →</small><span>${nextP ? 'page ' + nextP.page : 'last page'}</span></button>
+        </div></section>
+        <section><h3>document</h3><div class="rows">${row(pdf)}</div></section>`;
+      return;
+    }
+    const pages = n.children.map(id => byId.get(id)).filter(c => c.pageOf);
+    const pdfBlock = !f.pdf ? '' : pages.length
+      ? `<section><h3>pages on the map · ${pages.length}${f.pages > pages.length ? ` of ${f.pages}` : ''}</h3>
+          <div class="rows">${pages.slice(0, 8).map(c => `<button class="row" type="button" data-go="${c.id}">${typeIcon('file', c.color)}<span>${esc(c.label)}<small>${esc(String(c.detail || '').slice(0, 60))}</small></span></button>`).join('')}</div>
+          ${pages.length > 8 ? `<p class="body-text" style="color:var(--muted)">+${pages.length - 8} more on the map</p>` : ''}
+          <div class="actions"><button class="btn" type="button" data-fold>${folded.has(n.id) ? 'show pages' : 'hide pages'}</button><button class="ghost" type="button" data-droppages>remove pages</button></div></section>`
+      : `<section><h3>pages</h3><p class="body-text" style="color:var(--muted)">Open this PDF into its own small map: one square per page, laid out under it in reading order.</p>
+          <div class="actions"><button class="go" type="button" data-unfoldpdf>▤ unfold into pages</button></div></section>`;
     panel.innerHTML = `${head}<p class="meta">${f.url ? 'link' : f.pdf ? `pdf${f.pages ? ` · ${f.pages} page${f.pages === 1 ? '' : 's'}` : ''}` : f.img ? 'image' : 'file'} · ${esc(home)}${f.size ? ` · ${f.size < 1024 ? f.size + ' B' : (f.size / 1024).toFixed(1) + ' KB'}` : ''}</p>
       ${f.url ? `<div class="actions"><a class="go" href="${esc(f.url)}" target="_blank" rel="noopener noreferrer" style="text-decoration:none">open link ↗</a></div>` : ''}
       ${f.scanned ? `<p class="body-text" style="color:var(--muted)">This looks like a scanned PDF (pictures of pages), so there’s no text to read. The first page is shown below.</p>` : ''}
       ${f.img ? `<section><h3>${f.pdf ? 'first page' : 'preview'}</h3><img class="fprev" src="${esc(f.img)}" alt="${esc(n.label)}"></section>` : ''}
       ${f.text ? `<section><h3>${f.url ? 'address' : f.pdf ? 'text' + (f.text.length >= 4000 ? ' · start' : '') : 'contents'}</h3><pre class="ftext">${esc(f.text)}</pre></section>` : ''}
-      ${!f.img && !f.text && !f.url ? `<p class="body-text" style="color:var(--muted)">This file type can’t be previewed here. Its name and size are kept on the map.</p>` : ''}
+      ${pdfBlock}
+      ${!f.img && !f.text && !f.url && !f.pdf ? `<p class="body-text" style="color:var(--muted)">This file type can’t be previewed here. Its name and size are kept on the map.</p>` : ''}
       <section><h3>move it</h3><p class="body-text" style="color:var(--muted)">Drag this square onto another node to re-attach it, into a cloud to file it under that theme, or into open space to leave it loose.</p></section>
       ${par && !n.loose ? `<section><h3>attached to</h3><div class="rows">${row(par)}</div></section>` : ''}
       <div class="actions"><button class="ghost" type="button" data-unfile>remove from map</button></div>`;
@@ -826,7 +859,10 @@ panel.addEventListener('click', e => {
   if (b.dataset.wsopen) return openWsKey(b.dataset.wsopen);
   if (b.hasAttribute('data-suggest')) return suggestFor(selected, b);
   if (b.hasAttribute('data-keep')){ MAP.data[selected.id].ai = false; rebuild(); toast('kept on the map'); return; }
+  if (b.hasAttribute('data-unfoldpdf')) return unfoldPdf(selected, b);
+  if (b.hasAttribute('data-droppages')){ dropPages(selected.id); rebuild(); toast('pages removed'); return; }
   if (b.hasAttribute('data-unfile')){
+    dropPages(selected.id); idb.del(selected.id);
     const id = selected.id, p = parentOf[id], kids = MAP.data[id].children;
     MAP.data[p].children = MAP.data[p].children.flatMap(c => c === id ? kids : [c]); delete MAP.data[id];
     selected = null; rebuild(); toast('removed from the map'); return;
@@ -1088,6 +1124,73 @@ function showDrop(on){
   $('dropzone').hidden = !on;
 }
 
+// the original PDF is kept in IndexedDB (much roomier than localStorage) so it can be unfolded later
+const idb = (() => {
+  let dbP;
+  const open = () => dbP ||= new Promise((res, rej) => { const r = indexedDB.open('neura', 1); r.onupgradeneeded = () => r.result.createObjectStore('pdfs'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
+  const run = (mode, fn) => open().then(db => new Promise((res, rej) => { const tx = db.transaction('pdfs', mode), q = fn(tx.objectStore('pdfs')); tx.oncomplete = () => res(q.result); tx.onerror = () => rej(tx.error); }));
+  return {get: k => run('readonly', st => st.get(k)).catch(() => null), set: (k, v) => run('readwrite', st => st.put(v, k)).catch(() => null), del: k => run('readwrite', st => st.delete(k)).catch(() => null)};
+})();
+const MAX_PAGES = 24;
+async function readPdfPages(blob, max = MAX_PAGES){
+  const lib = await loadPdfjs();
+  const doc = await lib.getDocument({data: new Uint8Array(await blob.arrayBuffer())}).promise, out = [];
+  for (let i = 1; i <= Math.min(doc.numPages, max); i++){
+    const pg = await doc.getPage(i), tc = await pg.getTextContent();
+    let line = ''; const lines = [];
+    tc.items.forEach(it => { line += it.str; if (it.hasEOL){ lines.push(line); line = ''; } else if (it.str && !/\s$/.test(it.str)) line += ' '; });
+    if (line) lines.push(line);
+    const text = lines.map(l => l.replace(/\s+/g, ' ').trim()).filter(Boolean).join('\n');
+    let img = '';
+    try {
+      const v0 = pg.getViewport({scale: 1}), vp = pg.getViewport({scale: 240 / v0.width}), c = document.createElement('canvas');
+      c.width = Math.round(vp.width); c.height = Math.round(vp.height);
+      const ctx = c.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
+      await pg.render({canvasContext: ctx, viewport: vp}).promise; img = c.toDataURL('image/jpeg', .62);
+    } catch (e) {}
+    out.push({page: i, text, img});
+  }
+  const total = doc.numPages; doc.destroy(); return {total, pages: out};
+}
+function dropPages(id){
+  const d = MAP.data[id]; if (!d) return;
+  d.children = d.children.filter(c => { if (MAP.data[c]?.page){ delete MAP.data[c]; folded.delete(c); return false; } return true; });
+  folded.delete(id);
+}
+function askForPdf(){
+  return new Promise(res => { const inp = $('pdfAgain'); inp.value = ''; inp.onchange = () => res(inp.files[0] || null); inp.click(); });
+}
+async function unfoldPdf(n, btn){
+  let blob = await idb.get(n.id);
+  if (!blob){
+    toast('This PDF isn’t stored in this browser yet. Choose the same file to unfold it.');
+    blob = await askForPdf(); if (!blob) return;
+    if (!isPdf(blob)) return toast('That isn’t a PDF.');
+    idb.set(n.id, blob);
+  }
+  btn.disabled = true; btn.textContent = '▤ reading pages…';
+  let r;
+  try { r = await readPdfPages(blob); }
+  catch (e) { btn.disabled = false; btn.textContent = '▤ unfold into pages'; return toast('Couldn’t read this PDF. It may be password-protected or damaged.'); }
+  dropPages(n.id);
+  r.pages.forEach(p => {
+    const id = n.id + '_p' + p.page, first = p.text.split('\n')[0] || '';
+    MAP.data[id] = {label: `p.${p.page}${first ? ' · ' + first.slice(0, 28) : ''}`, kind: 'Page', detail: p.text.replace(/\s+/g, ' ').slice(0, 220) || 'No selectable text on this page.',
+      quote: '', children: [], page: p.page, file: {pdf: true, page: p.page, img: p.img, text: p.text.slice(0, 1500)}};
+    MAP.data[n.id].children.push(id);
+  });
+  if (r.total && !MAP.data[n.id].file.pages) MAP.data[n.id].file.pages = r.total;
+  shownTypes.add('file'); folded.delete(n.id);
+  const born = r.pages.map(p => n.id + '_p' + p.page);
+  rebuild();
+  born.forEach(id => { const m = byId.get(id); if (m){ m.x = n.x; m.y = n.y; } });   // pages fan out from the PDF
+  tick(); reflow(.5); flash([n.id, ...born]);
+  const saved = store.set('neura-map', MAP);
+  toast(!saved ? 'Pages added, but browser storage is full, so they won’t survive a reload'
+    : `${r.pages.length} page${r.pages.length === 1 ? '' : 's'} unfolded${r.total > r.pages.length ? ` (first ${r.pages.length} of ${r.total})` : ''}`);
+  const me = byId.get(n.id); if (me){ select(me, false); centerOn(me, Math.max(K, 1.3)); }
+}
+
 // read what was dropped into node records
 function thumb(file, max = 360){
   return new Promise(res => {
@@ -1118,7 +1221,7 @@ async function readDrop(files, uri){
     } else if (isPdf(f)){
       try {
         const r = await readPdf(f, {maxPages: 15, maxChars: 4000});
-        out.push({label: f.name, kind: 'PDF', detail: r.scanned ? `Scanned PDF · ${r.pages} page${r.pages === 1 ? '' : 's'} · no selectable text` : r.text.replace(/--- page \d+ ---/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 220),
+        out.push({blob: f, label: f.name, kind: 'PDF', detail: r.scanned ? `Scanned PDF · ${r.pages} page${r.pages === 1 ? '' : 's'} · no selectable text` : r.text.replace(/--- page \d+ ---/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 220),
           file: Object.assign(base, {pdf: true, pages: r.pages, img: r.img, text: r.scanned ? '' : r.text.slice(0, 4000), scanned: r.scanned})});
       } catch (e) {
         out.push({label: f.name, kind: 'PDF', detail: 'PDF · couldn’t be read (it may be password-protected or damaged).', file: Object.assign(base, {pdf: true})});
@@ -1145,6 +1248,7 @@ async function dropOnMap(files, uri, z){
   entries.forEach((en, i) => {
     const id = 'f_' + stamp + i, a = i * 2.4, rr = 16 * Math.sqrt(i), pos = {x: z.p.x + Math.cos(a) * rr, y: z.p.y + Math.sin(a) * rr};
     MAP.data[id] = {label: String(en.label).slice(0, 70), kind: en.kind, detail: en.detail, quote: '', children: [], file: en.file};
+    if (en.blob) idb.set(id, en.blob);
     if (z.kind === 'node') MAP.data[z.node.id].children.push(id);
     else if (z.kind === 'cloud') MAP.data[z.theme].children.push(id);
     else { Object.assign(MAP.data[id], {loose: true, pin: pos}); MAP.data.root.children.push(id); }
