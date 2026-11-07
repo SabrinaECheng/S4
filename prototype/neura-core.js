@@ -4,7 +4,7 @@ const KEY = process.env.OPENROUTER_API_KEY;
 const BASE = process.env.OPENROUTER_BASE || 'https://openrouter.ai/api/v1';
 // Swap models here. Pin exact ids: no ":batch" variants, no "~...-latest" aliases.
 const STT_MODEL = process.env.STT_MODEL || 'deepgram/nova-3';
-const MAP_MODEL = process.env.MAP_MODEL || 'anthropic/claude-haiku-5.5';
+const MAP_MODEL = process.env.MAP_MODEL || 'mistralai/ministral-3b-2512';
 
 
 const KINDS = ['Idea', 'Question', 'Task', 'Reference', 'Example', 'Outcome', 'Tangent', 'Supporting detail'];
