@@ -304,6 +304,41 @@ body.shelf-open .zoomlvl{display:none}
   body.panel-open .replay,body.panel-open .zoombox,body.panel-open .tray{display:none}
   .ws-hint{display:none}
 }
+/* ---- live session ---- */
+.node.fresh .body{animation:fresh 2.6s ease-out}
+@keyframes fresh{0%{stroke:#fff;stroke-width:7;stroke-opacity:1}100%{stroke-width:0;stroke-opacity:0}}
+.node.fresh .lbl{fill:var(--accent)}
+#liveBtn[aria-pressed="true"]{color:#ff8a8a}
+.tstrip{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 90px);z-index:5;
+  width:min(720px, calc(100vw - 32px - 56px));padding:7px 12px 8px;display:flex;flex-direction:column;gap:3px;cursor:pointer;text-align:left}
+.tstrip:hover{border-color:color-mix(in srgb, var(--accent) 60%, transparent)}
+.tstrip:focus-visible{outline:1px solid var(--accent)}
+.ts-head{display:flex;align-items:center;gap:8px;font-size:9.5px;color:var(--muted)}
+.ts-head .ts-state{color:var(--accent);display:flex;align-items:center;gap:6px}
+.ts-head .ts-state i{width:6px;height:6px;border-radius:50%;background:#ff6b6b;box-shadow:0 0 6px #ff6b6b;animation:pulse 1.4s ease-in-out infinite}
+.ts-head .ts-state.idle i{background:var(--muted);box-shadow:none;animation:none}
+@keyframes pulse{50%{opacity:.25}}
+.ts-head span:last-child{margin-left:auto}
+.ts-line{font-size:10.5px;line-height:1.5;color:var(--lbl);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ts-line b,.tline .tt{color:var(--accent);font-weight:400;font-variant-numeric:tabular-nums}
+.ts-line:last-child{color:var(--fg)}
+body.live-on .tray{bottom:calc(env(safe-area-inset-bottom,0px) + 168px)}
+body.panel-open .tstrip{transform:translateX(calc(-50% - 175px))}
+body.ws-open .tstrip{display:none}
+.tdrawer{gap:10px}
+.tdrawer .tlist{display:flex;flex-direction:column;gap:1px;margin:0 -6px}
+.tline{all:unset;box-sizing:border-box;display:grid;grid-template-columns:38px 1fr;gap:8px;padding:5px 6px;border-radius:3px;font-size:10.5px;line-height:1.6;color:var(--lbl);cursor:pointer;white-space:pre-wrap;word-break:break-word}
+.tline:hover,.tline.hl{background:var(--surface-2);color:var(--fg)}
+.tline.hl{box-shadow:inset 2px 0 0 var(--accent)}
+.tline:focus-visible{outline:1px solid var(--accent)}
+.tline.has i{display:block;font-style:normal;font-size:9px;color:var(--muted);margin-top:2px}
+.t-tools{display:flex;gap:6px;flex-wrap:wrap}
+.liveopt{display:flex;flex-direction:column;gap:6px}
+@media (max-width:760px){
+  .tstrip{width:calc(100vw - 32px);left:max(16px, env(safe-area-inset-left,0px));transform:none;bottom:calc(env(safe-area-inset-bottom,0px) + 136px)}
+  body.panel-open .tstrip,body.shelf-open .tstrip{display:none}
+  body.live-on .tray{bottom:calc(env(safe-area-inset-bottom,0px) + 214px)}
+}
 @media (prefers-reduced-motion: reduce){ *{animation:none!important;transition:none!important} }
 </style>
 
@@ -320,9 +355,16 @@ body.shelf-open .zoomlvl{display:none}
     <button type="button" class="tbtn" id="selBtn" aria-pressed="false">select</button>
     <button type="button" class="tbtn" id="pathBtn" aria-pressed="true">path</button>
     <button type="button" class="tbtn" id="tidyBtn">tidy</button>
+    <button type="button" class="tbtn" id="transcriptBtn" aria-pressed="false" aria-controls="tdrawer">transcript</button>
     <button type="button" class="tbtn hot" id="importBtn">+ transcripts</button>
+    <button type="button" class="tbtn hot" id="liveBtn" aria-pressed="false">● live</button>
   </div>
 </div>
+
+<button type="button" class="tstrip glass" id="tstrip" hidden aria-label="Live transcript, open the full transcript">
+  <span class="ts-head"><span class="ts-state" id="tsState"><i></i><span>listening…</span></span><span id="tsMeta"></span></span>
+  <span id="tsLines"></span>
+</button>
 
 <div class="zoomlvl glass"><span aria-live="polite">view: <b id="lvlName">nodes</b> · <span id="lvlHint">zoom in for summaries</span></span>
   <div class="tchips" id="tchips" role="group" aria-label="Show node types"></div>
@@ -349,6 +391,8 @@ body.shelf-open .zoomlvl{display:none}
 
 <aside class="panel glass" id="panel" hidden></aside>
 <aside class="shelf glass" id="shelf" hidden aria-label="Workspaces"></aside>
+<aside class="shelf glass tdrawer" id="tdrawer" hidden aria-label="Transcript"></aside>
+<input type="file" id="replayFile" accept=".txt,.md,.markdown,.vtt,.srt,text/plain" hidden>
 
 <div class="dropzone" id="dropzone" hidden><div><b id="dzTitle">drop transcripts to restructure the map</b><span id="dzSub">.txt · .md · .vtt · .srt · neura .json</span></div></div>
 <div class="backdrop" id="backdrop" hidden></div>
@@ -415,7 +459,14 @@ function buildModel(map){
   THEMES = data.root.children.slice();
   const color = {root: ROOTC}; THEMES.forEach((t, i) => color[t] = PALETTE[i % PALETTE.length]);
   const order = [], depth = {}, theme = {};
-  (function walk(id, d, th){ order.push(id); depth[id] = d; theme[id] = th; data[id].children.forEach(c => walk(c, d + 1, d === 0 ? c : th)); })('root', 0, 'root');
+  const effT = {};
+  (function walk(id, d, th, pt){ order.push(id); depth[id] = d; theme[id] = th; effT[id] = typeof data[id].t === 'number' ? data[id].t : pt;
+    data[id].children.forEach(c => walk(c, d + 1, d === 0 ? c : th, effT[id])); })('root', 0, 'root', -1);
+  // live maps: number nodes in the order they were said (DFS breaks ties); maps without times keep DFS order
+  if (order.some(id => typeof data[id].t === 'number')){
+    const dfs = new Map(order.map((id, i) => [id, i]));
+    order.sort((a, b) => effT[a] - effT[b] || dfs.get(a) - dfs.get(b));
+  }
   N = order.length;
   nodes = order.map((id, i) => {
     const s = data[id], d = depth[id];
@@ -740,7 +791,8 @@ function renderPanel(n){
     ${direct.length ? `<section><h3>workspaces in this node</h3><div class="rows">${direct.map(wsRow).join('')}</div></section>` : ''}
     ${branch.length ? `<section><h3>nested deeper in this branch</h3><div class="rows">${branch.map(wsRow).join('')}</div></section>` : ''}
     <section><h3>summary</h3><p class="body-text">${esc(n.detail)}</p></section>
-    ${n.quote ? `<section><h3>from transcript</h3><blockquote>“${esc(n.quote)}”</blockquote></section>` : ''}
+    ${n.quote || heardAt(n) != null ? `<section><h3>from transcript</h3>${n.quote ? `<blockquote>“${esc(n.quote)}”</blockquote>` : ''}
+      ${heardAt(n) != null ? `<button class="linkish" type="button" data-heard="${heardAt(n)}">heard at ${fmtT(heardAt(n))} · show in transcript →</button>` : ''}</section>` : ''}
     ${par ? `<section><h3>branched from</h3><div class="rows">${row(par)}</div></section>` : ''}
     ${kids.length ? `<section><h3>inside this node · by size</h3>
       <div style="--c:${n.color}">${mixBar(mix, 'mix')}</div>
@@ -754,12 +806,13 @@ function renderPanel(n){
       <button class="btn" type="button" data-go="${prev ? prev.id : ''}" ${prev ? '' : 'disabled'}><small>← before this</small><span>${prev ? esc(prev.label) : 'start'}</span></button>
       <button class="btn" type="button" data-go="${next ? next.id : ''}" ${next && next.i <= step ? '' : 'disabled'}><small>after this →</small><span>${next ? esc(next.label) : 'end'}</span></button>
     </div></section>
-    <p class="foot">${MAP.id === 'sample' ? 'Derived from the uploaded transcript · curated sample' : 'Structured by Claude from your files'}</p>`;
+    <p class="foot">${MAP.id === 'sample' ? 'Derived from the uploaded transcript · curated sample' : String(MAP.id).startsWith('live-') ? 'Mapped live from the conversation' : 'Structured by Claude from your files'}</p>`;
 }
 panel.addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b || !selected) return;
   if (b.hasAttribute('data-close')) return closePanel();
   if (b.dataset.wsopen) return openWsKey(b.dataset.wsopen);
+  if (b.dataset.heard != null) return openTranscript(+b.dataset.heard);
   if (b.hasAttribute('data-suggest')) return suggestFor(selected, b);
   if (b.hasAttribute('data-keep')){ MAP.data[selected.id].ai = false; rebuild(); toast('kept on the map'); return; }
   if (b.hasAttribute('data-dismiss')){
@@ -840,6 +893,7 @@ function loadMap(map, {fresh} = {}){
   for (let i = 0; i < 200; i++) sim.tick();
   $('status').textContent = map.title; syncTray();
   setStep(N - 1); fitAll(fresh ? 0 : 700);
+  if (!$('tdrawer').hidden) renderDrawer();
 }
 
 // ---------- drop transcripts → restructure ----------
@@ -926,7 +980,9 @@ ${body}`;
     let chars = 0;
     const j = await sample.json(prompt, {signal: runCtl.signal, onText: ({text}) => { chars = text.length; const p = $('sheet').querySelector('.progress span:last-child'); if (p) p.textContent = `structuring the map… ${chars.toLocaleString()} characters written`; }});
     runCtl = null;
-    commitMap(toMap(j, files.map(f => f.name).join(', ')));
+    const m = toMap(j, files.map(f => f.name).join(', '));
+    m.transcript = (how === 'merge' ? (MAP.transcript || []) : []).concat(texts.filter(t => !/\.json$/i.test(t.name)).map(t => ({t: 0, name: t.name, text: t.text.slice(0, 200000)})));
+    commitMap(m);
   } catch (e) {
     runCtl = null;
     const copy = {cancelled: 'Stopped.', not_granted: 'Claude access was declined for this page.', rate_limited: 'Too many requests right now. Try again in a minute.',
@@ -941,7 +997,7 @@ function compactMap(m){
   return {title: m.title, nodes: out, cross: m.cross || []};
 }
 function toMap(j, source){
-  if (j && j.data && j.data.root) return {id: 'm' + Date.now(), title: String(j.title || 'imported map'), data: j.data, cross: j.cross || []};
+  if (j && j.data && j.data.root) return {id: 'm' + Date.now(), title: String(j.title || 'imported map'), data: j.data, cross: j.cross || [], transcript: Array.isArray(j.transcript) ? j.transcript : []};
   if (!j || !Array.isArray(j.nodes) || !j.nodes.length) throw new Error('That file doesn’t contain a neura map.');
   const list = j.nodes.filter(n => n && n.id != null && n.label).slice(0, 90);
   const seen = new Set();
@@ -1031,6 +1087,7 @@ const shelf = $('shelf');
 $('shelfBtn').onclick = () => toggleShelf();
 function toggleShelf(force){
   const open = force ?? shelf.hidden;
+  if (open && !$('tdrawer').hidden) toggleTranscript(false);
   shelf.hidden = !open; document.body.classList.toggle('shelf-open', open); $('shelfBtn').setAttribute('aria-pressed', open);
   if (open) renderShelf(); else { wsHoverIds = null; paint(); }
 }
@@ -1251,6 +1308,320 @@ $('wsAI').onclick = async () => {
     $('wsStatus').textContent = e?.code === 'not_granted' ? 'Claude access was declined for this page.' : e?.code === 'rate_limited' ? 'Too many requests. Try again in a minute.' : 'Couldn’t generate next steps. Try again.';
   } finally { btn.disabled = false; }
 };
+
+// ======================= live session: mic → /transcribe → /extract → patch =======================
+// The server (server.js) holds the OpenRouter key; the page only talks to it.
+const API = location.protocol.startsWith('http') ? '' : 'http://localhost:3000';
+const CLIP_MS = 8000;          // one complete audio file per clip
+const SILENCE_RMS = 0.012;     // below this a 100ms frame counts as quiet
+const MIN_LOUD_FRAMES = 4;     // clips with fewer loud frames are skipped (saves money, avoids invented text)
+const BATCH_CLIPS = 2;         // extract after ~2 clips of text…
+const BATCH_MAX_WAIT = 20000;  // …or after this long, whichever first
+const live = {on: false, kind: null, stream: null, ctx: null, an: null, meter: null, rec: null, clipT: null, loud: 0,
+  t0: 0, tBase: 0, pending: [], busy: false, inflight: 0, pump: null, replay: null, follow: true, lastTheme: null, state: 'idle'};
+
+const fmtT = s => { s = Math.max(0, Math.round(s)); const h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60, x = String(s % 60).padStart(2, '0'); return h ? `${h}:${String(m).padStart(2, '0')}:${x}` : `${m}:${x}`; };
+const nowT = () => live.tBase + (Date.now() - live.t0) / 1000;
+function heardAt(n){ const s = MAP.data[n.id]?.src; return Array.isArray(s) ? s[0] : null; }
+function transcriptLines(){ if (!Array.isArray(MAP.transcript)) MAP.transcript = []; return MAP.transcript; }
+
+// ---------- start / stop ----------
+$('liveBtn').onclick = () => live.on ? stopLive() : openLiveSheet();
+function openLiveSheet(msg){
+  $('backdrop').hidden = false; $('sheet').hidden = false;
+  const has = !!(MAP.data.root.children.length);
+  $('sheet').innerHTML = `
+    <h2 id="sheetTitle">live session</h2>
+    <p>Neura listens in 8-second clips, writes down what’s said, and every ~15 seconds turns the new text into nodes on the map. Nobody is identified. Silent clips are never sent.</p>
+    <div class="opts" role="radiogroup" aria-label="Which map">
+      <label class="opt"><input type="radio" name="lmap" value="new" ${has ? '' : 'checked'}><span>start a new map<small>a blank map that grows as you talk</small></span></label>
+      <label class="opt"><input type="radio" name="lmap" value="add" ${has ? 'checked' : ''}><span>add to the current map<small>“${esc(MAP.title)}” · new ideas join the existing themes</small></span></label>
+    </div>
+    <div class="opts" role="radiogroup" aria-label="Source">
+      <label class="opt"><input type="radio" name="lsrc" value="mic" checked><span>microphone<small>live transcription of the room</small></span></label>
+      <label class="opt"><input type="radio" name="lsrc" value="replay"><span>replay a transcript file<small>feeds a saved .txt in chunks, no mic, for testing the map model</small></span></label>
+    </div>
+    ${msg ? `<p class="err">${esc(msg)}</p>` : ''}
+    <div class="actions"><button class="ghost" type="button" data-cancel>cancel</button><button class="go" type="button" data-livego>start →</button></div>`;
+}
+$('sheet').addEventListener('click', e => {
+  const b = e.target.closest('[data-livego]'); if (!b) return;
+  const q = n => $('sheet').querySelector(`input[name=${n}]:checked`)?.value;
+  const fresh = q('lmap') === 'new', src = q('lsrc');
+  if (src === 'replay'){ live.wantFresh = fresh; $('replayFile').click(); return; }
+  startLive('mic', fresh);
+});
+$('replayFile').onchange = async e => {
+  const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+  const text = await f.text();
+  startLive('replay', live.wantFresh, {text, name: f.name});
+};
+
+async function startLive(kind, fresh, file){
+  if (kind === 'mic'){
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') return openLiveSheet('This browser can’t record audio here. Try Chrome over http://localhost.');
+    try { live.stream = await navigator.mediaDevices.getUserMedia({audio: {echoCancellation: true, noiseSuppression: true, autoGainControl: true}}); }
+    catch (err) { return openLiveSheet(err?.name === 'NotAllowedError' ? 'Microphone access was blocked. Allow it in the address bar and try again.' : 'Couldn’t open the microphone.'); }
+  }
+  try { const h = await fetch(API + '/health').then(r => r.json()); if (!h.key) toast('server is running without OPENROUTER_API_KEY'); }
+  catch (err) { live.stream?.getTracks().forEach(t => t.stop()); live.stream = null; return openLiveSheet('Can’t reach the Neura server. Start it with: OPENROUTER_API_KEY=… node server.js, then open http://localhost:3000'); }
+  closeImport();
+  if (fresh){
+    const m = {id: 'live-' + Date.now(), title: 'live session · ' + new Date().toLocaleTimeString([], {hour: 'numeric', minute: '2-digit'}),
+      data: {root: {label: 'Live session', kind: 'Conversation', detail: 'A conversation mapped as it happens.', quote: '', children: []}}, cross: [], transcript: []};
+    store.set('neura-map', m); loadMap(m, {fresh: true});
+  }
+  const lines = transcriptLines(), last = lines.length ? lines[lines.length - 1].t : -1;
+  Object.assign(live, {on: true, kind, t0: Date.now(), tBase: last >= 0 ? Math.ceil(last) + 10 : 0, pending: [], busy: false, inflight: 0, follow: true,
+    lastTheme: MAP.data.root.children[MAP.data.root.children.length - 1] || null});
+  document.body.classList.add('live-on'); $('liveBtn').setAttribute('aria-pressed', 'true'); $('liveBtn').textContent = '■ stop';
+  $('status').innerHTML = `<span class="live">${kind === 'mic' ? 'listening' : 'replaying'}</span> · ${esc(MAP.title)}`;
+  $('tstrip').hidden = false; setLiveState(kind === 'mic' ? 'listening' : 'replaying'); renderStrip();
+  live.pump = setInterval(maybeExtract, 1000);
+  if (kind === 'mic') startMic(); else startReplay(file);
+}
+function stopLive(){
+  if (!live.on) return;
+  live.on = false; clearTimeout(live.clipT); clearInterval(live.meter); clearInterval(live.replay);
+  if (live.rec && live.rec.state !== 'inactive') live.rec.stop();
+  live.stream?.getTracks().forEach(t => t.stop()); live.stream = null;
+  live.ctx?.close().catch(() => {}); live.ctx = null;
+  document.body.classList.remove('live-on'); $('liveBtn').setAttribute('aria-pressed', 'false'); $('liveBtn').textContent = '● live';
+  $('status').textContent = MAP.title;
+  // flush what's left, then hide the strip once nothing is in flight
+  const wrap = setInterval(() => {
+    if (live.on){ clearInterval(wrap); return; }
+    if (live.pending.length && !live.busy) runExtract();
+    if (!live.pending.length && !live.busy && !live.inflight){ clearInterval(wrap); clearInterval(live.pump); $('tstrip').hidden = true; setLiveState('idle'); toast(`live session saved · ${N} thoughts · ${transcriptLines().length} transcript lines`); }
+  }, 500);
+  setLiveState('finishing');
+}
+addEventListener('beforeunload', () => { if (live.on) store.set('neura-map', MAP); });
+
+// ---------- clip loop ----------
+function startMic(){
+  live.ctx = new (window.AudioContext || window.webkitAudioContext)();
+  const src = live.ctx.createMediaStreamSource(live.stream);
+  live.an = live.ctx.createAnalyser(); live.an.fftSize = 2048; src.connect(live.an);
+  const buf = new Float32Array(live.an.fftSize);
+  live.meter = setInterval(() => {
+    live.an.getFloatTimeDomainData(buf);
+    let s = 0; for (let i = 0; i < buf.length; i++) s += buf[i] * buf[i];
+    if (Math.sqrt(s / buf.length) > SILENCE_RMS) live.loud++;
+  }, 100);
+  nextClip();
+}
+function nextClip(){
+  if (!live.on || !live.stream) return;
+  const mime = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg;codecs=opus'].find(m => MediaRecorder.isTypeSupported(m)) || '';
+  // a fresh recorder per clip → every clip is a complete file with its own header
+  const rec = new MediaRecorder(live.stream, mime ? {mimeType: mime} : {});
+  const chunks = [], t = nowT();
+  live.loud = 0;
+  rec.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };
+  rec.onstop = () => {
+    const loud = live.loud;
+    nextClip();
+    if (loud < MIN_LOUD_FRAMES){ if (live.on && !live.busy && !live.inflight) setLiveState('quiet'); return; }
+    sendClip(new Blob(chunks, {type: rec.mimeType || mime || 'audio/webm'}), t);
+  };
+  rec.start(); live.rec = rec;
+  live.clipT = setTimeout(() => { if (rec.state !== 'inactive') rec.stop(); }, CLIP_MS);
+}
+async function sendClip(blob, t){
+  live.inflight++; setLiveState('transcribing');
+  try {
+    const r = await fetch(API + '/transcribe', {method: 'POST', headers: {'Content-Type': blob.type}, body: blob});
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error || 'transcription failed');
+    const text = String(j.text || '').trim();
+    if (text) addLine(t, text);
+  } catch (err) { toast('transcription: ' + (err.message || 'failed')); }
+  finally { live.inflight--; if (live.on) setLiveState(live.busy ? 'mapping' : live.kind === 'mic' ? 'listening' : 'replaying'); }
+}
+
+// ---------- replay a saved transcript (no mic, same extraction path) ----------
+function startReplay(file){
+  const words = String(file.text).replace(/\r/g, '').replace(/^\s*(WEBVTT.*|\d+|[\d:.,]+ --> [\d:.,]+.*)$/gm, '').split(/\s+/).filter(Boolean);
+  const chunks = []; let cur = [];
+  words.forEach(w => { cur.push(w); if (cur.join(' ').length > 280 && /[.?!]$/.test(w) || cur.join(' ').length > 420){ chunks.push(cur.join(' ')); cur = []; } });
+  if (cur.length) chunks.push(cur.join(' '));
+  let i = 0;
+  toast(`replaying ${file.name} · ${chunks.length} chunks`);
+  const feed = () => {
+    if (!live.on) return;
+    if (i >= chunks.length) return stopLive();   // stopLive flushes whatever text is still pending
+    if (live.pending.length >= BATCH_CLIPS * 2) return; // let extraction catch up
+    addLine(live.tBase + i * CLIP_MS / 1000, chunks[i]); i++;
+  };
+  feed(); live.replay = setInterval(feed, RM ? 1500 : 3000);
+}
+
+// ---------- transcript ----------
+function addLine(t, text){
+  const lines = transcriptLines(), line = {t: Math.round(t * 10) / 10, text};
+  let k = lines.length; while (k > 0 && lines[k - 1].t > line.t) k--;   // clips can come back out of order
+  lines.splice(k, 0, line);
+  live.pending.push({t: line.t, text, at: Date.now()});
+  store.set('neura-map', MAP);
+  renderStrip(); if (!$('tdrawer').hidden) renderDrawer();
+}
+function setLiveState(s){
+  live.state = s;
+  const label = {listening: 'listening…', replaying: 'replaying transcript…', transcribing: 'transcribing…', mapping: 'mapping ideas…', quiet: 'listening… (quiet)', finishing: 'finishing up…', idle: 'stopped'}[s] || s;
+  $('tsState').classList.toggle('idle', s === 'idle');
+  $('tsState').lastElementChild.textContent = label;
+}
+function renderStrip(){
+  const lines = transcriptLines();
+  $('tsMeta').textContent = `${lines.length} line${lines.length === 1 ? '' : 's'} · full transcript →`;
+  $('tsLines').innerHTML = lines.length ? lines.slice(-2).map(l => `<span class="ts-line" style="display:block"><b>${fmtT(l.t)}</b> ${esc(l.text)}</span>`).join('')
+    : `<span class="ts-line" style="display:block;color:var(--muted)">text shows up here every ~8 seconds while people talk</span>`;
+}
+$('tstrip').onclick = () => openTranscript();
+
+const tdrawer = $('tdrawer');
+$('transcriptBtn').onclick = () => toggleTranscript();
+function toggleTranscript(force){
+  const open = force ?? tdrawer.hidden;
+  if (open && !shelf.hidden) toggleShelf(false);
+  tdrawer.hidden = !open; document.body.classList.toggle('shelf-open', open); $('transcriptBtn').setAttribute('aria-pressed', open);
+  if (open){ live.follow = true; renderDrawer(); } else { wsHoverIds = null; paint(); }
+}
+function openTranscript(t){
+  toggleTranscript(true);
+  if (t == null) return;
+  const els = [...tdrawer.querySelectorAll('.tline')];
+  let best = null; els.forEach(el => { if (+el.dataset.t <= t + .05) best = el; });
+  best = best || els[0]; if (!best) return;
+  live.follow = false;
+  els.forEach(el => el.classList.toggle('hl', el === best));
+  best.scrollIntoView({block: 'center', behavior: RM ? 'auto' : 'smooth'});
+}
+function nodesHeardIn(t0, t1){ return Object.entries(MAP.data).filter(([, d]) => Array.isArray(d.src) && d.src[0] <= t1 && d.src[1] >= t0).map(([id]) => id).filter(id => byId.has(id)); }
+function renderDrawer(){
+  const lines = transcriptLines();
+  const rows = lines.map((l, i) => {
+    const next = lines[i + 1], ids = nodesHeardIn(l.t, next && next.t > l.t ? next.t - .01 : l.t + CLIP_MS / 1000);
+    return `<button type="button" class="tline ${ids.length ? 'has' : ''}" data-t="${l.t}" data-i="${i}"><span class="tt">${l.name ? '' : fmtT(l.t)}</span><span>${l.name ? `<b style="color:var(--accent);font-weight:400">${esc(l.name)}</b>\n` : ''}${esc(l.text)}${ids.length ? `<i>→ ${ids.slice(0, 3).map(id => esc(byId.get(id).label)).join(' · ')}${ids.length > 3 ? ` +${ids.length - 3}` : ''}</i>` : ''}</span></button>`;
+  }).join('');
+  const prevScroll = tdrawer.scrollTop;
+  tdrawer.innerHTML = `
+    <div class="p-head"><h2>transcript</h2><button class="close" type="button" data-tclose aria-label="Close transcript"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+    <p class="empty" style="margin-top:-6px">${lines.length ? `${lines.length} line${lines.length === 1 ? '' : 's'}${live.on ? ' · live' : ''} · hover a line to see the nodes it made` : MAP.id === 'sample' ? 'The sample map was curated by hand, so it has no saved transcript. Start a live session or drop transcripts to get one.' : 'No transcript yet. Start a live session with ● live.'}</p>
+    ${lines.length ? `<div class="t-tools"><button class="ghost" type="button" data-tcopy>copy</button><button class="ghost" type="button" data-tdl>download .txt</button></div>` : ''}
+    <div class="tlist">${rows}</div>`;
+  if (live.on && live.follow) tdrawer.scrollTop = tdrawer.scrollHeight; else tdrawer.scrollTop = prevScroll;
+}
+function transcriptText(){ return transcriptLines().map(l => l.name ? `=== ${l.name} ===\n${l.text}` : `[${fmtT(l.t)}] ${l.text}`).join('\n'); }
+tdrawer.addEventListener('scroll', () => { if (live.on) live.follow = tdrawer.scrollTop + tdrawer.clientHeight >= tdrawer.scrollHeight - 30; });
+tdrawer.addEventListener('click', async e => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.hasAttribute('data-tclose')) return toggleTranscript(false);
+  if (b.hasAttribute('data-tcopy')){ try { await navigator.clipboard.writeText(transcriptText()); toast('transcript copied'); } catch (err) { toast('couldn’t copy. Use download instead.'); } return; }
+  if (b.hasAttribute('data-tdl')){
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([transcriptText()], {type: 'text/plain'}));
+    a.download = `${String(MAP.title).replace(/[^\w-]+/g, '-').replace(/^-|-$/g, '') || 'neura'}-transcript.txt`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000); return;
+  }
+  if (b.classList.contains('tline')){
+    const ids = linesIds(b); tdrawer.querySelectorAll('.tline').forEach(el => el.classList.toggle('hl', el === b));
+    if (ids.length) select(byId.get(ids[0]), true);
+  }
+});
+function linesIds(el){ const lines = transcriptLines(), i = +el.dataset.i, l = lines[i], next = lines[i + 1]; return l ? nodesHeardIn(l.t, next && next.t > l.t ? next.t - .01 : l.t + CLIP_MS / 1000) : []; }
+tdrawer.addEventListener('mouseover', e => { const el = e.target.closest('.tline'); const ids = el ? linesIds(el) : null; const v = ids && ids.length ? ids : null; if (String(v) !== String(wsHoverIds)){ wsHoverIds = v; paint(); } });
+tdrawer.addEventListener('mouseleave', () => { wsHoverIds = null; paint(); });
+
+// ---------- extraction loop: one call at a time; text piles up while it runs ----------
+function maybeExtract(){
+  if (live.busy || !live.pending.length) return;
+  if (live.pending.length >= BATCH_CLIPS || Date.now() - live.pending[0].at > BATCH_MAX_WAIT) runExtract();
+}
+function compactLive(){
+  const out = []; (function w(id, p){ const n = MAP.data[id]; out.push({id, parent: p, label: n.label, kind: n.kind}); n.children.forEach(c => w(c, id)); })('root', null);
+  return {nodes: out, cross: MAP.cross || []};
+}
+async function runExtract(){
+  const batch = live.pending.splice(0, live.pending.length);
+  live.busy = true; setLiveState('mapping');
+  const lines = transcriptLines(), firstT = batch[0].t;
+  const context = lines.filter(l => l.t < firstT).slice(-3).map(l => l.text).join(' ').slice(-600);
+  try {
+    const r = await fetch(API + '/extract', {method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({map: compactLive(), context, text: batch.map(b => b.text).join('\n')})});
+    const patch = await r.json();
+    if (!r.ok) throw new Error(patch.error || 'extraction failed');
+    applyPatch(patch, [batch[0].t, batch[batch.length - 1].t + CLIP_MS / 1000]);
+  } catch (err) {
+    toast('mapping: ' + (err.message || 'failed') + ' · retrying with the next batch');
+    live.pending.unshift(...batch.slice(-BATCH_CLIPS));   // keep the latest text so it isn't lost
+  } finally {
+    live.busy = false;
+    if (live.on) setLiveState(live.inflight ? 'transcribing' : live.kind === 'mic' ? 'listening' : 'replaying');
+  }
+}
+
+// ---------- apply a patch to the map ----------
+const cleanId = s => String(s ?? '').trim().replace(/[^\w-]/g, '_').slice(0, 40);
+function applyPatch(p, src){
+  const data = MAP.data, added = [], t = src ? src[0] : nowT();
+  const clip = (s, n) => String(s ?? '').replace(/\s+/g, ' ').trim().slice(0, n);
+  const freshId = raw => { let id = cleanId(raw) || 'n' + Date.now().toString(36); if (id === 'root') id = 'root_'; while (data[id]) id += '_'; return id; };
+  const idMap = {};   // model's id → id actually used (after de-duplication)
+  const resolve = raw => { const id = cleanId(raw); return idMap[id] || (data[id] ? id : null); };
+  // themes → children of root (each gets its own colour cloud)
+  (Array.isArray(p.add_themes) ? p.add_themes : []).slice(0, 3).forEach(th => {
+    if (!th || !clip(th.label, 70)) return;
+    const id = freshId(th.id); idMap[cleanId(th.id)] = id;
+    data[id] = {label: clip(th.label, 70), kind: 'Theme', detail: clip(th.detail, 500), quote: clip(th.quote, 200), children: [], t, src};
+    data.root.children.push(id); added.push(id); live.lastTheme = id;
+  });
+  // nodes → under their parent; unknown parent falls back to the most recent theme, then root
+  (Array.isArray(p.add_nodes) ? p.add_nodes : []).slice(0, 10).forEach(nd => {
+    if (!nd || !clip(nd.label, 70)) return;
+    if (data[cleanId(nd.id)] && !idMap[cleanId(nd.id)]) return;       // already exists: not a new node
+    let par = resolve(nd.parent);
+    if (!par) par = live.lastTheme && data[live.lastTheme] ? live.lastTheme : 'root';   // a node put directly under root becomes a theme
+    let d = 0; for (let q = par; q && q !== 'root'; q = parentOfData(q)) d++;
+    if (d >= 3) par = parentOfData(par) || par;                           // keep the tree at most 3 levels below root
+    const id = freshId(nd.id); idMap[cleanId(nd.id)] = id;
+    const isTheme = par === 'root';
+    data[id] = {label: clip(nd.label, 70), kind: isTheme ? 'Theme' : clip(nd.kind || 'Idea', 30), detail: clip(nd.detail, 500), quote: clip(nd.quote, 200), children: [], t, src};
+    data[par].children.push(id); added.push(id);
+    if (isTheme) live.lastTheme = id; else { let th = par; while (parentOfData(th) && parentOfData(th) !== 'root') th = parentOfData(th); if (th !== 'root') live.lastTheme = th; }
+  });
+  // updates → merge into existing nodes ("" means unchanged)
+  let changed = 0;
+  (Array.isArray(p.update_nodes) ? p.update_nodes : []).forEach(u => {
+    const id = resolve(u?.id); if (!id || id === 'root') return;
+    const n = data[id];
+    ['label', 'detail', 'quote'].forEach(f => { const v = clip(u[f], f === 'label' ? 70 : f === 'detail' ? 500 : 200); if (v){ n[f] = v; changed++; } });
+    if (u.kind && n.kind !== 'Theme'){ n.kind = clip(u.kind, 30); changed++; }
+    if (src && !n.src) n.src = src;
+  });
+  // links → only between nodes that exist, no duplicates
+  const cross = MAP.cross = MAP.cross || [], seen = new Set(cross.map(([a, b]) => [a, b].sort().join('|')));
+  let linked = 0;
+  (Array.isArray(p.add_links) ? p.add_links : []).forEach(l => {
+    const a = resolve(Array.isArray(l) ? l[0] : l?.a), b = resolve(Array.isArray(l) ? l[1] : l?.b);
+    if (!a || !b || a === b || a === 'root' || b === 'root') return;
+    const k = [a, b].sort().join('|'); if (seen.has(k)) return; seen.add(k); cross.push([a, b]); linked++;
+  });
+  if (!added.length && !changed && !linked) return 0;
+  const hadThemes = THEMES.length;
+  rebuild();
+  // glow on what's new
+  const fresh = new Set(added);
+  if (fresh.size && nodeSel){
+    const g = nodeSel.filter(n => fresh.has(n.id));
+    g.classed('born', false).classed('fresh', false); g.each(function(){ this.getBBox(); }); g.classed('born', true).classed('fresh', true);
+    setTimeout(() => nodeSel && nodeSel.filter(n => fresh.has(n.id)).classed('fresh', false), 2800);
+  }
+  if (THEMES.length !== hadThemes && !selected) fitAll();
+  if (!tdrawer.hidden) renderDrawer();
+  return added.length + changed + linked;
+}
+function parentOfData(id){ for (const [k, v] of Object.entries(MAP.data)) if (v.children.includes(id)) return k; return null; }
 
 // ---------- start ----------
 const savedMap = store.get('neura-map');
