@@ -58,6 +58,16 @@ body[data-zoom="far"] .lbl.t2,body[data-zoom="far"] .lbl.t3{display:none}
 body[data-zoom="mid"] .lbl.t3{opacity:.75}
 body[data-zoom="near"] .lbl,body[data-zoom="near"] .node .body,body[data-zoom="near"] .node .core,body[data-zoom="near"] .node .pickring{display:none}
 .node.lit .lbl{fill:var(--fg);opacity:1!important}
+.node .aura{pointer-events:none;transform-box:fill-box;transform-origin:center;animation:aura 3.6s ease-in-out infinite}
+@keyframes aura{0%,100%{opacity:.6;transform:scale(.82)}50%{opacity:1;transform:scale(1.12)}}
+.node.provisional .aura{animation-duration:1.8s}
+body[data-zoom="near"] .node .aura{display:none}
+.node.provisional .lbl{font-style:italic;font-weight:500!important;fill:var(--muted)!important}
+.node.provisional .pill{stroke:var(--line-2);stroke-dasharray:4 3;fill-opacity:.8}
+.node.settled .pill{animation:settle 1s ease-out}
+.node.settled .lbl{animation:settleText .8s ease-out}
+@keyframes settle{0%{stroke:var(--accent);stroke-width:3}100%{}}
+@keyframes settleText{0%{opacity:0}100%{opacity:1}}
 .node.revisit .body{animation:revisit 1.6s ease-out}
 @keyframes revisit{0%{stroke:var(--accent);stroke-width:10}100%{}}
 .ticker .back{color:var(--accent);font-weight:600}
@@ -826,6 +836,8 @@ const TYPES = [['idea','ideas'],['question','questions'],['example','examples'],
 const TYPE_NAME = {hub: 'theme', idea: 'idea', question: 'question', example: 'example', ref: 'resource', task: 'action', file: 'file', suggestion: 'ai suggestion'};
 // one simple shape per type so they read at a glance, even zoomed out
 //  idea ● circle · question ◯ ring with ? · example ⬢ hexagon · resource ◆ diamond · action ▢ square with ✓ · file ▤ page · ai ◌ dashed
+// the starting node is a larger outlined hexagon: the one point everything else grows from
+const bodyD = n => n.d === 0 ? shapeD('example', n.r * 1.45) : shapeD(n.type, n.r);
 function shapeD(t, r){
   const P = pts => 'M' + pts.map(p => p.map(v => +v.toFixed(2)).join(',')).join('L') + 'Z';
   if (t === 'example') return P([0,1,2,3,4,5].map(i => [Math.cos(Math.PI / 6 + i * Math.PI / 3) * r * 1.12, Math.sin(Math.PI / 6 + i * Math.PI / 3) * r * 1.12]));
@@ -847,6 +859,7 @@ function typeIcon(t, c, s = 10){
 }
 function bodyStyle(n){
   const c = n.color;
+  if (n.d === 0) return `fill:var(--paper);stroke:${c};stroke-width:2.6;stroke-linejoin:round`;
   switch (n.type){
     case 'file': return `fill:#e3e8f0;stroke:${c};stroke-width:1.4`;
     case 'question': return `fill:var(--paper);stroke:${c};stroke-width:1.6`;
@@ -958,6 +971,8 @@ let nebSel, edgeSel, crossSel, tickSel, nodeSel;
 
 function buildScene(){
   gradDefs.selectAll('radialGradient').remove();
+  gradDefs.append('radialGradient').attr('id', 'rootAura')
+    .html(`<stop offset="0" stop-color="${ROOTC}" stop-opacity=".4"/><stop offset=".5" stop-color="${ROOTC}" stop-opacity=".12"/><stop offset="1" stop-color="${ROOTC}" stop-opacity="0"/>`);
   ['root', ...THEMES].forEach(t => {
     const c = t === 'root' ? ROOTC : byId.get(t).color;
     gradDefs.append('radialGradient').attr('id', 'neb-' + t)
@@ -975,13 +990,14 @@ function buildScene(){
     const g = enter.append('g').attr('class', n => 'node d' + Math.min(n.d, 3) + ' ' + n.type + (n.loose ? ' loose' : '') + (n.pageOf ? ' page' : ''));
     g.append('circle').attr('class','pickring').attr('r', n => n.r + 7);
     // files are small rounded squares (a page) so they read differently from spoken thoughts
-    g.append(n => document.createElementNS('http://www.w3.org/2000/svg', shapeD(n.type, n.r) ? 'path' : 'circle')).attr('class','body')
-      .each(function(n){ const d = shapeD(n.type, n.r); d ? d3.select(this).attr('d', d) : d3.select(this).attr('r', n.r); })
+    g.filter(n => n.d === 0).append('circle').attr('class','aura').attr('r', n => n.r * 3.4).attr('fill', 'url(#rootAura)');
+    g.append(n => document.createElementNS('http://www.w3.org/2000/svg', bodyD(n) ? 'path' : 'circle')).attr('class','body')
+      .each(function(n){ const d = bodyD(n); d ? d3.select(this).attr('d', d) : d3.select(this).attr('r', n.r); })
       .attr('filter', n => n.type === 'ref' ? null : 'url(#glow)').attr('style', bodyStyle);
     g.filter(n => n.type === 'file').append('path').attr('class','fglyph').attr('d', n => { const r = n.r * .5; return `M${-r},${-r * .15}H${r * .6}M${-r},${r * .45}H${r * .6}`; });
     g.filter(n => GLYPH[n.type]).append('text').attr('class','glyph').attr('text-anchor','middle').attr('dy', n => n.r * .42)
       .attr('font-size', n => n.r * (n.type === 'task' ? 1.15 : 1.25)).attr('fill', n => n.color).text(n => GLYPH[n.type]);
-    g.append('circle').attr('class','core').attr('r', n => n.r * .4).attr('display', n => (n.type === 'hub' || n.type === 'idea') && n.d <= 2 ? null : 'none').attr('style','fill:#fff;fill-opacity:.82');
+    g.append('circle').attr('class','core').attr('r', n => n.r * .4).attr('display', n => (n.type === 'hub' || n.type === 'idea') && n.d >= 1 && n.d <= 2 ? null : 'none').attr('style','fill:#fff;fill-opacity:.82');
     g.filter(n => n.d <= 1).append('rect').attr('class','pill');
     g.append('text').attr('class', n => 'lbl t' + Math.min(n.d, 3)).attr('text-anchor','middle').attr('dy', n => n.r + 11)
       .attr('font-size', n => [10, 9.5, 8.2, 7.2][Math.min(n.d, 3)]).text(n => n.label);
@@ -1073,13 +1089,26 @@ function labelSide(n){
   if (n.d === 0) return -1;
   return -(n.dir || 1);
 }
+// the conversation's title stays provisional while it's still being built (replay or live),
+// then settles into its real name once the whole thing has been heard
+let rootDone = true;
+function syncRootTitle(){
+  if (!nodeSel) return;
+  const r = nodes[0]; if (!r || r.d !== 0) return;
+  const done = step >= N - 1 && !playing && !(typeof live !== 'undefined' && live.on);
+  const g = nodeSel.filter(n => n === r);
+  g.classed('provisional', !done);
+  g.select('text.lbl').text(done ? r.label : 'naming the conversation…');
+  if (done && !rootDone){ g.classed('settled', false); g.node()?.getBBox(); g.classed('settled', true); }
+  rootDone = done; layoutLabels();
+}
 function layoutLabels(){
   if (!nodeSel) return;
   const s = 1 / Math.min(Math.max(K, .1), 1.2), padX = 7 * s, padY = 3.5 * s, gap = 8 * s;
   nodeSel.filter(n => n.d <= 1).each(function(n){
     const g = d3.select(this), t = g.select('text.lbl'), side = labelSide(n);
     const fs = +t.attr('font-size') || 10;
-    const h = fs * 1.25 + padY * 2, near = n.r + gap;
+    const h = fs * 1.25 + padY * 2, near = (n.d === 0 ? n.r * 1.8 : n.r) + gap;
     const cy = side * (near + h / 2);                    // pill centre
     t.attr('dy', null).attr('y', cy).attr('dominant-baseline', 'central');
     let w = 0; try { w = t.node().getComputedTextLength(); } catch (e) {}
@@ -1176,7 +1205,7 @@ function setStep(s, born){
     : `${back ? `<span class="back">↩ back to ${esc(hub.label)}</span> · ` : ''}<b>#${String(step + 1).padStart(2,'0')} ${esc(String(n.kind).toLowerCase())}</b> · ${esc(n.label)}${n.quote ? ` · “${esc(n.quote)}”` : ''}`;
   if (back && born){ const g = nodeSel.filter(d => d === hub).classed('revisit', false); g.node().getBBox(); g.classed('revisit', true); }
   if (born && playing) follow(n);
-  reflow(.35); paint(); tick();
+  reflow(.35); paint(); tick(); syncRootTitle();
 }
 // while replaying, pan only when the conversation moves somewhere off screen (e.g. jumps back to an earlier theme)
 function follow(n){
@@ -2706,7 +2735,7 @@ function addLine(t, text){
   renderStrip(); if (!$('tdrawer').hidden) renderDrawer();
 }
 function setLiveState(s){
-  live.state = s;
+  live.state = s; setTimeout(syncRootTitle, 0);
   const label = {listening: 'listening…', replaying: 'replaying transcript…', transcribing: 'transcribing…', mapping: 'mapping ideas…', quiet: 'listening… (quiet)', finishing: 'finishing up…', idle: 'stopped'}[s] || s;
   $('tsState').classList.toggle('idle', s === 'idle');
   $('tsState').lastElementChild.textContent = label;
