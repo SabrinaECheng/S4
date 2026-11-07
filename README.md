@@ -1,9 +1,9 @@
 # S4
 Nova Hackathon CMU
 
-## 🔗 [Open the live Neura prototype](https://sabrinaecheng.github.io/S4/prototype/)
+## 🔗 [Open the live Neura prototype](https://neura-mu-eight.vercel.app/prototype/)
 
-https://sabrinaecheng.github.io/S4/prototype/
+https://neura-mu-eight.vercel.app/prototype/
 
 Logo explorations: https://sabrinaecheng.github.io/S4/prototype/logos.html
 
