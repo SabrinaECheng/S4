@@ -4,7 +4,7 @@ const KEY = process.env.OPENROUTER_API_KEY;
 const BASE = process.env.OPENROUTER_BASE || 'https://openrouter.ai/api/v1';
 // Swap models here. Pin exact ids: no ":batch" variants, no "~...-latest" aliases.
 const STT_MODEL = process.env.STT_MODEL || 'deepgram/nova-3';
-const MAP_MODEL = process.env.MAP_MODEL || 'mistralai/ministral-3b-2512';
+const MAP_MODEL = process.env.MAP_MODEL || 'google/gemini-2.5-flash-lite';
 
 
 const KINDS = ['Idea', 'Question', 'Task', 'Reference', 'Example', 'Outcome', 'Tangent', 'Supporting detail'];
@@ -43,7 +43,7 @@ const PATCH_SCHEMA = {
   }
 };
 
-const SYSTEM = `You keep a live idea map of a brainstorm up to date while people talk. Every ~15 seconds you get the newest stretch of an automatic transcript (no speaker names, words may be cut at clip edges) and the current map. You reply with a small patch.
+const SYSTEM = `You keep a live idea map of a brainstorm up to date while people talk. Every few seconds you get the newest stretch of an automatic transcript (no speaker names, words may be cut at clip edges) and the current map. You reply with a small patch.
 
 THE MAP
 - A tree. "root" is the whole conversation. Children of root are THEMES (big topics, each gets its own colour cloud). Below themes sit ideas, questions, tasks, references etc., at most 3 levels below root.
@@ -69,22 +69,29 @@ WRITING
 - At most 2 new themes and 6 new nodes per patch. Prefer fewer, better nodes.
 - Only use the NEW text as evidence. "Earlier" text is context you already processed.`;
 
-async function extract({map, text, context}){
+const FINAL_SYSTEM = `
+
+FINAL RECONCILIATION
+- Review the FULL TRANSCRIPT against the current map and add important ideas, questions, tasks, references, outcomes and links that incremental updates missed.
+- Update incomplete existing nodes when later context makes them clearer. Never duplicate an existing node.
+- For this request, replace the normal per-patch limits with at most 4 new themes and 12 new nodes.
+- Use only the full transcript as evidence and keep quotes exact.`;
+
+async function extract({map, text, context, final = false}){
   const user = `CURRENT MAP (id · parent · kind · label):
 ${(map?.nodes || []).map(n => `${n.id} · ${n.parent ?? '-'} · ${n.kind} · ${n.label}`).join('\n') || 'root · - · Conversation · (empty)'}
 LINKS: ${(map?.cross || []).map(p => p.join('–')).join(', ') || 'none'}
 
-EARLIER (already processed, context only):
-${context || '(start of session)'}
+${final ? 'FINAL REVIEW: compare the current map with the complete transcript below.' : `EARLIER (already processed, context only):\n${context || '(start of session)'}`}
 
-NEW TEXT:
+${final ? 'FULL TRANSCRIPT' : 'NEW TEXT'}:
 ${text}`;
   // Not every OpenRouter provider accepts every parameter. Try the strictest request first, then
   // fall back step by step. Whichever mode works is remembered so later calls skip the failures.
   let lastErr;
   for (let i = extractMode; i < MODES.length; i++){
     try {
-      const out = await callModel(MODES[i], user);
+      const out = await callModel(MODES[i], user, final);
       if (i !== extractMode) console.log(`extract: using "${MODES[i].name}" mode from now on`);
       extractMode = i;
       return out;
@@ -106,13 +113,13 @@ const MODES = [
 ];
 let extractMode = 0;
 
-async function callModel(mode, user){
+async function callModel(mode, user, final){
   const r = await fetch(`${BASE}/chat/completions`, {
     method: 'POST', signal: AbortSignal.timeout(45000),
     headers: {Authorization: `Bearer ${KEY}`, 'Content-Type': 'application/json', 'X-Title': 'Neura'},
     body: JSON.stringify({
-      model: MAP_MODEL, max_tokens: 1500,
-      messages: [{role: 'system', content: SYSTEM + (mode.hint ? SCHEMA_HINT : '')}, {role: 'user', content: user}],
+      model: MAP_MODEL, max_tokens: final ? 3500 : 1500,
+      messages: [{role: 'system', content: SYSTEM + (final ? FINAL_SYSTEM : '') + (mode.hint ? SCHEMA_HINT : '')}, {role: 'user', content: user}],
       ...mode.body
     })
   });

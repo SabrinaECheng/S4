@@ -2717,13 +2717,14 @@ $('wsAI').onclick = async () => {
 // Live calls the Vercel deployment: paste its URL here, e.g. 'https://neura-xyz.vercel.app'.
 const HOSTED_API = '';
 const API = /\.github\.io$/.test(location.hostname) ? HOSTED_API.replace(/\/$/, '') : location.protocol.startsWith('http') ? '' : 'http://localhost:3000';
-const CLIP_MS = 8000;          // one complete audio file per clip
+const CLIP_MS = 2000;          // short complete files keep live updates close to real time
 const SILENCE_RMS = 0.012;     // below this a 100ms frame counts as quiet
 const MIN_LOUD_FRAMES = 4;     // clips with fewer loud frames are skipped (saves money, avoids invented text)
-const BATCH_CLIPS = 2;         // extract after ~2 clips of text…
-const BATCH_MAX_WAIT = 20000;  // …or after this long, whichever first
+const BATCH_CLIPS = 1;         // map each transcribed clip immediately
+const BATCH_MAX_WAIT = 2500;   // fallback if batching changes later
 const live = {on: false, kind: null, stream: null, ctx: null, an: null, meter: null, rec: null, clipT: null, loud: 0,
-  t0: 0, tBase: 0, pending: [], busy: false, inflight: 0, pump: null, replay: null, follow: true, lastTheme: null, state: 'idle'};
+  t0: 0, tBase: 0, pending: [], busy: false, inflight: 0, pump: null, replay: null, follow: true, lastTheme: null, state: 'idle',
+  nextClipId: 0, nextTranscriptId: 0, transcriptResults: new Map(), stopping: false, finalizing: false, finalDone: false, finalFailed: false};
 
 const fmtT = s => { s = Math.max(0, Math.round(s)); const h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60, x = String(s % 60).padStart(2, '0'); return h ? `${h}:${String(m).padStart(2, '0')}:${x}` : `${m}:${x}`; };
 const nowT = () => live.tBase + (Date.now() - live.t0) / 1000;
@@ -2733,13 +2734,13 @@ function transcriptLines(){ if (!Array.isArray(MAP.transcript)) MAP.transcript =
 // ---------- start / stop ----------
 $('liveBtn').onclick = () => live.on ? stopLive() : record();
 // one press: record straight away. A blank map or the example starts a new meeting; your own project keeps growing.
-function record(){ closeProjects(); startLive('mic', MAP.id === 'sample' || !MAP.data.root.children.length); }
+function record(){ if (live.stopping) return toast('finishing the previous recording…'); closeProjects(); startLive('mic', MAP.id === 'sample' || !MAP.data.root.children.length); }
 function openLiveSheet(msg){
   $('backdrop').hidden = false; $('sheet').hidden = false;
   const has = !!(MAP.data.root.children.length);
   $('sheet').innerHTML = `
     <h2 id="sheetTitle">live session</h2>
-    <p>Neura listens in 8-second clips, writes down what’s said, and every ~15 seconds turns the new text into nodes on the map. Nobody is identified. Silent clips are never sent.</p>
+    <p>Neura listens in 2-second clips, writes down what’s said, and turns each completed clip into nodes right away. Stop waits for everything and checks the full transcript once more. Nobody is identified. Silent clips are never sent.</p>
     <div class="opts" role="radiogroup" aria-label="Which map">
       <label class="opt"><input type="radio" name="lmap" value="new" ${has ? '' : 'checked'}><span>start a new map<small>a blank map that grows as you talk</small></span></label>
       <label class="opt"><input type="radio" name="lmap" value="add" ${has ? 'checked' : ''}><span>add to the current map<small>“${esc(MAP.title)}” · new ideas join the existing themes</small></span></label>
@@ -2780,27 +2781,32 @@ async function startLive(kind, fresh, file){
   }
   const lines = transcriptLines(), last = lines.length ? lines[lines.length - 1].t : -1;
   Object.assign(live, {on: true, kind, t0: Date.now(), tBase: last >= 0 ? Math.ceil(last) + 10 : 0, pending: [], busy: false, inflight: 0, follow: true,
-    lastTheme: MAP.data.root.children[MAP.data.root.children.length - 1] || null});
+    lastTheme: MAP.data.root.children[MAP.data.root.children.length - 1] || null, nextClipId: 0, nextTranscriptId: 0,
+    transcriptResults: new Map(), stopping: false, finalizing: false, finalDone: false, finalFailed: false});
   document.body.classList.add('live-on'); setRecUI(true);
   $('status').innerHTML = `<span class="live">${kind === 'mic' ? 'live' : 'replay'}</span>`;
   $('tstrip').hidden = false; setLiveState(kind === 'mic' ? 'listening' : 'replaying'); renderStrip();
-  live.pump = setInterval(maybeExtract, 1000);
+  live.pump = setInterval(maybeExtract, 250);
   if (kind === 'mic') startMic(); else startReplay(file);
 }
 function stopLive(){
   if (!live.on) return;
-  live.on = false; clearTimeout(live.clipT); clearInterval(live.meter); clearInterval(live.replay);
+  live.on = false; live.stopping = true; clearTimeout(live.clipT); clearInterval(live.meter); clearInterval(live.replay);
   if (live.rec && live.rec.state !== 'inactive') live.rec.stop();
   live.stream?.getTracks().forEach(t => t.stop()); live.stream = null;
   live.ctx?.close().catch(() => {}); live.ctx = null;
   document.body.classList.remove('live-on'); setRecUI(false);
   $('status').textContent = '';
-  // flush what's left, then hide the strip once nothing is in flight
+  // Flush every partial transcript, then reconcile the complete transcript before declaring success.
   const wrap = setInterval(() => {
     if (live.on){ clearInterval(wrap); return; }
     if (live.pending.length && !live.busy) runExtract();
-    if (!live.pending.length && !live.busy && !live.inflight){ clearInterval(wrap); clearInterval(live.pump); $('tstrip').hidden = true; setLiveState('idle'); toast(`live session saved · ${N} thoughts · ${transcriptLines().length} transcript lines`); }
-  }, 500);
+    if (!live.pending.length && !live.busy && !live.inflight && !live.finalizing && !live.finalDone) runFinalExtract();
+    if (!live.pending.length && !live.busy && !live.inflight && live.finalDone){
+      clearInterval(wrap); clearInterval(live.pump); live.stopping = false; $('tstrip').hidden = true; setLiveState('idle');
+      toast(`${live.finalFailed ? 'live session saved · final review failed' : 'live session fully mapped'} · ${N} thoughts · ${transcriptLines().length} transcript lines`);
+    }
+  }, 250);
   setLiveState('finishing');
 }
 addEventListener('beforeunload', () => { if (live.on) store.set('neura-map', MAP); });
@@ -2822,29 +2828,37 @@ function nextClip(){
   if (!live.on || !live.stream) return;
   const mime = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg;codecs=opus'].find(m => MediaRecorder.isTypeSupported(m)) || '';
   // a fresh recorder per clip → every clip is a complete file with its own header
-  const rec = new MediaRecorder(live.stream, mime ? {mimeType: mime} : {});
+  const rec = new MediaRecorder(live.stream, mime ? {mimeType: mime} : {}), clipId = live.nextClipId++;
   const chunks = [], t = nowT();
   live.loud = 0;
   rec.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };
   rec.onstop = () => {
     const loud = live.loud;
     nextClip();
-    if (loud < MIN_LOUD_FRAMES){ if (live.on && !live.busy && !live.inflight) setLiveState('quiet'); return; }
-    sendClip(new Blob(chunks, {type: rec.mimeType || mime || 'audio/webm'}), t);
+    if (loud < MIN_LOUD_FRAMES){ completeClip(clipId, t, ''); if (live.on && !live.busy && !live.inflight) setLiveState('quiet'); return; }
+    sendClip(new Blob(chunks, {type: rec.mimeType || mime || 'audio/webm'}), t, clipId);
   };
   rec.start(); live.rec = rec;
   live.clipT = setTimeout(() => { if (rec.state !== 'inactive') rec.stop(); }, CLIP_MS);
 }
-async function sendClip(blob, t){
+function completeClip(clipId, t, text){
+  live.transcriptResults.set(clipId, {t, text});
+  while (live.transcriptResults.has(live.nextTranscriptId)){
+    const result = live.transcriptResults.get(live.nextTranscriptId);
+    live.transcriptResults.delete(live.nextTranscriptId++);
+    if (result.text) addLine(result.t, result.text);
+  }
+}
+async function sendClip(blob, t, clipId){
   live.inflight++; setLiveState('transcribing');
+  let text = '';
   try {
     const r = await fetch(API + '/transcribe', {method: 'POST', headers: {'Content-Type': blob.type}, body: blob});
     const j = await r.json();
     if (!r.ok) throw new Error(j.error || 'transcription failed');
-    const text = String(j.text || '').trim();
-    if (text) addLine(t, text);
+    text = String(j.text || '').trim();
   } catch (err) { toast('transcription: ' + (err.message || 'failed')); }
-  finally { live.inflight--; if (live.on) setLiveState(live.busy ? 'mapping' : live.kind === 'mic' ? 'listening' : 'replaying'); }
+  finally { completeClip(clipId, t, text); live.inflight--; if (live.on) setLiveState(live.busy ? 'mapping' : live.kind === 'mic' ? 'listening' : 'replaying'); }
 }
 
 // ---------- replay a saved transcript (no mic, same extraction path) ----------
@@ -2969,6 +2983,26 @@ async function runExtract(){
     live.busy = false;
     if (live.on) setLiveState(live.inflight ? 'transcribing' : live.kind === 'mic' ? 'listening' : 'replaying');
   }
+}
+
+async function runFinalExtract(){
+  const lines = transcriptLines();
+  if (!lines.length){ live.finalDone = true; return; }
+  live.finalizing = true; live.busy = true; setLiveState('finishing');
+  let error = null;
+  for (let attempt = 0; attempt < 2; attempt++){
+    try {
+      const r = await fetch(API + '/extract', {method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({map: compactLive(), context: '', text: lines.map(l => l.text).join('\n'), final: true})});
+      const patch = await r.json();
+      if (!r.ok) throw new Error(patch.error || 'final mapping failed');
+      applyPatch(patch, [lines[0].t, lines[lines.length - 1].t + CLIP_MS / 1000]);
+      error = null; break;
+    } catch (err) { error = err; }
+  }
+  live.finalFailed = !!error;
+  if (error) toast('final review failed: ' + (error.message || 'try again later'));
+  live.busy = false; live.finalizing = false; live.finalDone = true;
 }
 
 // ---------- apply a patch to the map ----------
