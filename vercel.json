@@ -1,0 +1,10 @@
+{
+  "rewrites": [
+    {"source": "/transcribe", "destination": "/api/neura?route=transcribe"},
+    {"source": "/extract", "destination": "/api/neura?route=extract"},
+    {"source": "/health", "destination": "/api/neura?route=health"}
+  ],
+  "functions": {
+    "api/neura.js": {"maxDuration": 60}
+  }
+}

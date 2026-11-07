@@ -2278,7 +2278,10 @@ $('wsAI').onclick = async () => {
 
 // ======================= live session: mic → /transcribe → /extract → patch =======================
 // The server (server.js) holds the OpenRouter key; the page only talks to it.
-const API = location.protocol.startsWith('http') ? '' : 'http://localhost:3000';
+// Where the AI routes live. Same site when served by server.js or Vercel. On GitHub Pages (static only),
+// Live calls the Vercel deployment: paste its URL here, e.g. 'https://neura-xyz.vercel.app'.
+const HOSTED_API = '';
+const API = /\.github\.io$/.test(location.hostname) ? HOSTED_API.replace(/\/$/, '') : location.protocol.startsWith('http') ? '' : 'http://localhost:3000';
 const CLIP_MS = 8000;          // one complete audio file per clip
 const SILENCE_RMS = 0.012;     // below this a 100ms frame counts as quiet
 const MIN_LOUD_FRAMES = 4;     // clips with fewer loud frames are skipped (saves money, avoids invented text)
@@ -2331,7 +2334,7 @@ async function startLive(kind, fresh, file){
     catch (err) { return openLiveSheet(err?.name === 'NotAllowedError' ? 'Microphone access was blocked. Allow it in the address bar and try again.' : 'Couldn’t open the microphone.'); }
   }
   try { const h = await fetch(API + '/health').then(r => r.json()); if (!h.key) toast('server is running without OPENROUTER_API_KEY'); }
-  catch (err) { live.stream?.getTracks().forEach(t => t.stop()); live.stream = null; return openLiveSheet('Can’t reach the Neura server. Start it with: OPENROUTER_API_KEY=… node server.js, then open http://localhost:3000'); }
+  catch (err) { live.stream?.getTracks().forEach(t => t.stop()); live.stream = null; return openLiveSheet(/\.github\.io$/.test(location.hostname) && !HOSTED_API ? 'Live needs the Neura server, which GitHub Pages can’t run. Open the Vercel link instead, or run it locally with node server.js.' : 'Can’t reach the Neura server. Run it with: OPENROUTER_API_KEY=… node server.js, then open http://localhost:3000'); }
   closeImport();
   if (fresh){
     const m = {id: 'live-' + Date.now(), title: 'live session · ' + new Date().toLocaleTimeString([], {hour: 'numeric', minute: '2-digit'}),
