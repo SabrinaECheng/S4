@@ -9,7 +9,7 @@
    Look: white canvas with a soft corner wash, coral / lavender / cobalt accents, Inter for UI, Fragment Mono for small meta. */
 :root{
   --bg:#fff; --paper:#fff; --surface:rgba(255,255,255,.88); --surface-2:#f0eff4; --line:#e4e2ea; --line-2:#cfccd8;
-  --fg:#16161d; --lbl:#4b4a57; --muted:#8b8996; --accent:#3a55e6; --accent-soft:#e9edff; --warn:#e5484d;
+  --fg:#16161d; --lbl:#4b4a57; --muted:#6e6c7a; --accent:#3a55e6; --accent-soft:#e9edff; --warn:#e5484d;
   --coral:#ff7a59; --violet:#a98bff;
   --sans:'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
   --code:'Fragment Mono', ui-monospace, 'SF Mono', Menlo, monospace;
@@ -146,13 +146,9 @@ body[data-zoom="near"] .cardfo{display:inline}
 .zoombox button:focus-visible,.ws-zoom button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
 .zpct{font-family:var(--code);font-size:11px;color:var(--lbl);min-width:42px;text-align:center;font-variant-numeric:tabular-nums}
 body.panel-open .zoombox{right:calc(358px + max(16px, env(safe-area-inset-right,0px)))}
-body.panel-open .dock,body.panel-open .tray,body.panel-open .replay,body.panel-open .viewpop{transform:translateX(calc(-50% - 175px))}
+body.panel-open .dock,body.panel-open .tray,body.panel-open .replay{transform:translateX(calc(-50% - 175px))}
 
 /* view settings popover */
-.viewpop{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 80px);z-index:8;width:min(320px, calc(100vw - 32px));
-  padding:14px 14px 12px;display:flex;flex-direction:column;gap:12px;background:var(--paper);box-shadow:var(--shadow-lg)}
-.viewpop header{display:flex;align-items:baseline;justify-content:space-between}
-.viewpop h2{margin:0;font-size:13px;font-weight:650}
 .vp-lvl{font-family:var(--code);font-size:10.5px;color:var(--muted)}
 .vp-lvl b{color:var(--fg);font-weight:400}
 .vp-sec{display:flex;flex-direction:column;gap:7px}
@@ -263,7 +259,7 @@ blockquote{margin:0;padding:10px 12px;background:var(--surface-2);border-left:2p
 .ws .dock{position:absolute}
 .ws-status{margin-left:auto;font-size:11.5px;color:var(--lbl);display:flex;align-items:center;gap:7px;padding:8px 12px;border-radius:10px;background:var(--surface);border:1px solid var(--line)}
 .ws-status:empty{display:none}
-body.ws-open #dock,body.ws-open .logo,body.ws-open .replay,body.ws-open .zoombox,body.ws-open .tray,body.ws-open .panel,body.ws-open .shelf,body.ws-open .viewpop,body.ws-open .tstrip{display:none}
+body.ws-open #dock,body.ws-open .logo,body.ws-open .replay,body.ws-open .zoombox,body.ws-open .tray,body.ws-open .panel,body.ws-open .shelf,body.ws-open .tstrip{display:none}
 
 /* ---- node types ---- */
 .node.suggestion .lbl{fill:var(--accent);font-style:italic}
@@ -376,8 +372,7 @@ body[data-zoom="near"] .wsg{display:none}
   [data-tip]:hover::after{display:none}
   .zoombox{bottom:calc(env(safe-area-inset-bottom,0px) + 72px);right:8px}
   .tray{bottom:calc(env(safe-area-inset-bottom,0px) + 128px)}
-  .viewpop{left:8px;right:8px;width:auto;transform:none;bottom:calc(env(safe-area-inset-bottom,0px) + 72px)}
-  body.panel-open .dock,body.panel-open .tray,body.panel-open .replay,body.panel-open .viewpop{transform:none}
+  body.panel-open .dock,body.panel-open .tray,body.panel-open .replay{transform:none}
   .panel,.shelf{top:auto;left:0;right:0;bottom:0;width:auto;max-height:60vh;border-radius:16px 16px 0 0;
     padding-left:max(16px, env(safe-area-inset-left,0px));padding-right:max(16px, env(safe-area-inset-right,0px));padding-bottom:calc(env(safe-area-inset-bottom,0px) + 20px)}
   body.panel-open .zoombox,body.panel-open .tray,body.panel-open #dock,body.shelf-open .zoombox,body.shelf-open .tray,body.shelf-open #dock{display:none}
@@ -440,8 +435,8 @@ body[data-zoom="near"] .glyph,body[data-zoom="near"] .fglyph{display:none}
 .fbadge text{font-family:var(--code);font-size:7.5px;fill:var(--lbl);font-weight:700}
 .fbadge:hover rect{stroke:var(--fg);stroke-opacity:1}
 body[data-zoom="near"] .fbadge{display:none}
-.pop{position:fixed;z-index:8;width:300px;max-height:min(72vh, 540px);overflow-y:auto;padding:12px 13px 12px;display:flex;flex-direction:column;gap:9px;
-  border-top:2px solid var(--c);box-shadow:var(--shadow-lg);background:var(--paper)}
+.pop{position:fixed;z-index:8;width:300px;max-height:min(calc(100vh - 160px), 540px);overflow-y:auto;padding:12px 13px 12px;display:flex;flex-direction:column;gap:9px;
+  box-shadow:var(--shadow-lg);background:var(--paper)}
 .pp-head{display:flex;align-items:center;gap:6px;font-size:9.5px;text-transform:uppercase;letter-spacing:.08em}
 .pp-type{color:var(--c);font-weight:700}
 .pp-theme{color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -463,36 +458,6 @@ body[data-zoom="near"] .fbadge{display:none}
 .pp-tags button:hover{border-color:var(--c);color:var(--fg)}
 .pp-tags button:focus-visible{outline:1.5px solid var(--accent)}
 .pp-actions{display:flex;gap:6px;padding-top:2px}
-.plan{position:fixed;top:calc(env(safe-area-inset-top,0px) + 14px);right:max(16px, env(safe-area-inset-right,0px));bottom:calc(env(safe-area-inset-bottom,0px) + 14px);width:380px;z-index:9;
-  display:flex;flex-direction:column;gap:12px;padding:16px;overflow-y:auto;background:var(--paper);box-shadow:var(--shadow-lg)}
-.plan h2{margin:0;font-size:16px;font-weight:700}
-.pl-sub{margin:-6px 0 0;font-size:10px;color:var(--muted);line-height:1.5}
-.pl-prog{height:4px;border-radius:2px;background:var(--surface-2);overflow:hidden;flex:none}
-.pl-prog i{display:block;height:100%;background:var(--accent);box-shadow:0 0 6px var(--accent);transition:width .25s}
-.pl-tools{display:flex;flex-wrap:wrap;gap:6px}
-.pl-task{border:1px solid var(--line);border-radius:4px;padding:10px 11px;display:flex;flex-direction:column;gap:7px;background:var(--paper)}
-.pl-task.done{opacity:.55}
-.pl-task h3{margin:0;font-size:12.5px;font-weight:700;display:flex;gap:8px;align-items:baseline;line-height:1.4}
-.pl-task h3 span{margin-left:auto;font-size:9.5px;font-weight:400;color:var(--muted);white-space:nowrap}
-.pl-why{margin:0;font-size:10.5px;line-height:1.55;color:var(--lbl)}
-.pl-steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px}
-.pl-steps label{display:flex;gap:8px;align-items:flex-start;padding:4px 2px;font-size:11px;line-height:1.45;cursor:pointer;border-radius:3px}
-.pl-steps label:hover{background:var(--surface-2)}
-.pl-steps input{margin:2px 0 0;accent-color:var(--accent);flex:none}
-.pl-steps input:checked + span{text-decoration:line-through;color:var(--muted)}
-.pl-steps small{margin-left:auto;padding-left:8px;color:var(--muted);font-size:9.5px;white-space:nowrap}
-.pl-src{display:flex;flex-wrap:wrap;gap:4px}
-.pl-src button{all:unset;cursor:pointer;display:flex;align-items:center;gap:4px;font-size:9.5px;color:var(--muted);padding:2px 6px;border:1px dashed var(--line);border-radius:999px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.pl-src button:hover{color:var(--accent);border-color:var(--accent)}
-.pl-src button:focus-visible{outline:1.5px solid var(--accent)}
-.pl-key{display:flex;flex-direction:column;gap:6px;font-size:10.5px;color:var(--muted);border-top:1px solid var(--line);padding-top:10px;line-height:1.55}
-.pl-key summary{cursor:pointer;color:var(--lbl)}
-.pl-key input{font:inherit;font-size:11px;background:var(--surface-2);border:1px solid var(--line);border-radius:3px;color:var(--fg);padding:6px 8px;flex:1;min-width:0}
-.pl-key .row2{display:flex;gap:6px;align-items:center;margin-top:6px}
-@media (max-width:760px){
-  .plan{top:auto;left:0;right:0;bottom:0;width:auto;max-height:75vh;border-radius:12px 12px 0 0}
-  body.plan-open .replay,body.plan-open .zoombox,body.plan-open .tray{display:none}
-}
 .callout{position:fixed;z-index:12;pointer-events:none;display:flex;flex-direction:column;gap:2px;padding:6px 9px;font-size:10px;max-width:260px;
   border-color:var(--cc, var(--accent));box-shadow:0 0 22px color-mix(in srgb, var(--cc, var(--accent)) 35%, transparent);transform:translate(-50%, calc(-100% - 16px))}
 .callout b{font-weight:700;color:var(--fg);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -531,6 +496,121 @@ body[data-zoom="near"] .fbadge{display:none}
 .fprev{display:block;max-width:100%;max-height:220px;border-radius:3px;border:1px solid var(--line);object-fit:contain;background:var(--surface-2)}
 .ftext{margin:0;padding:9px 11px;background:var(--surface-2);border-radius:3px;font-size:10.5px;line-height:1.6;white-space:pre-wrap;word-break:break-word;max-height:220px;overflow:auto;color:var(--lbl)}
 .c-img{display:block;width:100%;max-height:70px;object-fit:cover;border-radius:2px;margin-top:3px}
+/* ==== clarity pass: visible key, labelled dock, readable next steps, first-run guide ==== */
+/* dock: words where an icon alone is ambiguous */
+.tbtn .badge{min-width:16px;height:16px;padding:0 5px;border-radius:8px;background:var(--accent);color:#fff;font-family:var(--code);font-size:9.5px;line-height:16px;text-align:center}
+.tbtn .badge:empty{display:none}
+.tbtn[data-tip]{position:relative}
+.tbtn.hot{margin-left:2px}
+.tbtn.hot[aria-pressed="true"]{background:var(--fg);color:#fff}
+
+/* highlight key: always visible, doubles as the legend for node shapes */
+.legend{position:fixed;left:max(16px, env(safe-area-inset-left,0px));top:calc(env(safe-area-inset-top,0px) + 72px);z-index:5;width:172px;padding:12px 10px 10px;display:flex;flex-direction:column;gap:8px}
+.legend h2{margin:0 4px;font-size:12px;font-weight:650;color:var(--fg)}
+.legend .tchips{flex-direction:column;flex-wrap:nowrap;gap:1px}
+.legend .tchip{width:100%;background:none;border:1px solid transparent;border-radius:8px;padding:6px 8px;font:inherit;font-size:12px;gap:9px;text-align:left}
+.legend .tchip em{font-style:normal;flex:1}
+.legend .tchip span{font-size:10.5px}
+.legend .tchip:hover{background:var(--surface-2);border-color:transparent}
+.legend .tchip[aria-pressed="true"]{background:var(--accent-soft);border-color:transparent;color:var(--accent)}
+.legend .tchip.clear{justify-content:center;margin-top:4px;border:1px dashed var(--line-2);color:var(--lbl);font-size:11.5px}
+.legend .tchip.clear:hover{color:var(--fg);border-color:var(--muted)}
+.legend .tchip[hidden]{display:none}
+.lg-note{margin:2px 4px 0;font-size:10.5px;line-height:1.45;color:var(--muted)}
+body.shelf-open .legend,body.ws-open .legend{display:none}
+
+/* zoom level, spelled out next to the zoom controls */
+.zoomhint{position:fixed;right:max(16px, env(safe-area-inset-right,0px));bottom:calc(env(safe-area-inset-bottom,0px) + 70px);z-index:5;font-size:11px;color:var(--muted);pointer-events:none;text-align:right}
+.zoomhint b{color:var(--lbl);font-weight:600}
+body.ws-open .zoomhint{display:none}
+
+/* transcript drawer sizes to what it holds */
+.tdrawer{bottom:auto;max-height:calc(100vh - 160px)}
+.tdrawer .empty{line-height:1.55}
+
+/* next steps */
+.plan{position:fixed;top:calc(env(safe-area-inset-top,0px) + 14px);right:max(16px, env(safe-area-inset-right,0px));bottom:calc(env(safe-area-inset-bottom,0px) + 84px);width:400px;z-index:9;
+  display:flex;flex-direction:column;gap:14px;padding:18px 18px 16px;overflow-y:auto;background:var(--paper);box-shadow:var(--shadow-lg);scrollbar-width:thin}
+.pl-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.pl-head h2{margin:0;font-size:18px;font-weight:700;letter-spacing:-.015em;line-height:1.2}
+.pl-sub{margin:4px 0 0;font-size:11.5px;color:var(--muted);line-height:1.45}
+.pl-sum{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:-6px}
+.pl-sum p{margin:0;font-size:12.5px;color:var(--lbl)}
+.pl-sum b{font-size:15px;color:var(--fg);font-variant-numeric:tabular-nums}
+.pl-sum span{font-size:11.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.pl-prog{height:6px;border-radius:3px;background:var(--surface-2);overflow:hidden;flex:none}
+.pl-prog i{display:block;height:100%;border-radius:3px;background:var(--accent);transition:width .3s cubic-bezier(.2,.8,.2,1)}
+.pl-tools{display:flex;gap:6px}
+.pl-tools button{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.pl-tools .go{flex:1;justify-content:center}
+.pl-list{list-style:none;margin:2px 0 0;padding:0;display:flex;flex-direction:column;border-top:1px solid var(--line)}
+.pl-task{border-bottom:1px solid var(--line)}
+.pl-task summary{list-style:none;display:flex;align-items:center;gap:12px;padding:12px 2px;cursor:pointer;border-radius:8px}
+.pl-task summary::-webkit-details-marker{display:none}
+.pl-task summary:hover .pl-tt b{color:var(--accent)}
+.pl-task summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.pl-num{flex:none;width:24px;height:24px;border-radius:50%;display:grid;place-items:center;background:var(--surface-2);color:var(--lbl);font-size:11.5px;font-weight:650;font-variant-numeric:tabular-nums}
+.pl-task.done .pl-num{background:var(--accent);color:#fff}
+.pl-tt{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.pl-tt b{font-size:13px;font-weight:600;line-height:1.35;color:var(--fg);transition:color .15s}
+.pl-tt small{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+.pl-task.done .pl-tt b{color:var(--muted);text-decoration:line-through;text-decoration-color:var(--line-2)}
+.pl-task summary > svg{flex:none;color:var(--muted);transition:transform .2s cubic-bezier(.2,.8,.2,1)}
+.pl-task details[open] summary > svg{transform:rotate(90deg)}
+.pl-body{display:flex;flex-direction:column;gap:10px;padding:0 2px 14px 36px}
+.pl-why{margin:0;font-size:12px;line-height:1.55;color:var(--lbl)}
+.pl-from{margin:0;display:flex;flex-wrap:wrap;align-items:center;gap:5px;font-size:11px;color:var(--muted)}
+.pl-from button{all:unset;cursor:pointer;display:inline-flex;align-items:center;gap:5px;max-width:100%;padding:3px 8px;border-radius:999px;background:var(--surface-2);color:var(--lbl);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pl-from button:hover{background:var(--accent-soft);color:var(--accent)}
+.pl-from button:focus-visible{outline:2px solid var(--accent)}
+.pl-steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.pl-steps label{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:start;padding:7px 8px;margin:0 -8px;border-radius:8px;font-size:12.5px;line-height:1.45;color:var(--fg);cursor:pointer}
+.pl-steps label:hover{background:var(--surface-2)}
+.pl-steps input{appearance:none;-webkit-appearance:none;margin:1px 0 0;width:16px;height:16px;border:1.5px solid var(--line-2);border-radius:5px;background:var(--paper);display:grid;place-items:center;cursor:pointer;transition:background .15s, border-color .15s}
+.pl-steps input::after{content:'';width:8px;height:4px;border-left:2px solid #fff;border-bottom:2px solid #fff;transform:translateY(-1px) rotate(-45deg) scale(0);transition:transform .15s cubic-bezier(.2,.8,.2,1)}
+.pl-steps input:checked{background:var(--accent);border-color:var(--accent)}
+.pl-steps input:checked::after{transform:translateY(-1px) rotate(-45deg) scale(1)}
+.pl-steps input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.pl-steps input:checked + span{text-decoration:line-through;color:var(--muted)}
+.pl-steps small{font-size:11px;color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums;padding-top:1px}
+.pl-empty{margin:0;font-size:12px;line-height:1.6;color:var(--muted)}
+.pl-key{font-size:11.5px;color:var(--muted);line-height:1.55;margin-top:auto;padding-top:12px;border-top:1px solid var(--line)}
+.pl-key summary{cursor:pointer;color:var(--lbl);font-weight:500;width:max-content}
+.pl-key summary:hover{color:var(--fg)}
+.pl-key summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.pl-key p{margin:8px 0 0}
+.pl-key .row2{display:flex;gap:6px;align-items:center;margin-top:8px}
+.pl-key input{font:inherit;font-size:12px;background:var(--surface-2);border:1px solid var(--line);border-radius:8px;color:var(--fg);padding:7px 9px;flex:1;min-width:0}
+.pl-key input:focus{outline:2px solid var(--accent);outline-offset:-1px}
+.plan .err,.plan .progress{margin:0}
+
+/* first-run guide */
+.guide{position:fixed;right:max(16px, env(safe-area-inset-right,0px));top:calc(env(safe-area-inset-top,0px) + 72px);z-index:8;width:320px;padding:16px;display:flex;flex-direction:column;gap:12px;background:var(--paper);box-shadow:var(--shadow-lg)}
+.guide header{display:flex;align-items:center;justify-content:space-between;margin:-4px -6px -2px 0}
+.guide h2{margin:0;font-size:14px;font-weight:650}
+.guide ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+.guide li{display:grid;grid-template-columns:28px 1fr;gap:10px;align-items:start}
+.guide li svg{width:28px;height:28px;padding:6px;border-radius:8px;background:var(--accent-soft);color:var(--accent)}
+.guide li p{margin:0;font-size:12px;line-height:1.5;color:var(--lbl)}
+.guide li b{color:var(--fg);font-weight:600}
+.guide .go{align-self:flex-start}
+body.ws-open .guide{display:none}
+body.panel-open .guide,body.plan-open .guide{display:none}
+
+@media (max-width:760px){
+  .legend{top:calc(env(safe-area-inset-top,0px) + 66px);left:8px;right:8px;width:auto;padding:6px;flex-direction:row;align-items:center}
+  .legend h2,.lg-note{display:none}
+  .legend .tchips{flex-direction:row;overflow-x:auto;scrollbar-width:none}
+  .legend .tchips::-webkit-scrollbar{display:none}
+  .legend .tchip{width:auto;flex:none;padding:5px 9px}
+  .legend .tchip.clear{margin:0}
+  .zoomhint{display:none}
+  .tbtn.hot .tlabel{display:inline}
+  #planBtn{order:-1;margin:0 4px 0 0}
+  .plan{top:auto;left:0;right:0;bottom:0;width:auto;max-height:80vh;border-radius:16px 16px 0 0}
+  body.plan-open .replay,body.plan-open .zoombox,body.plan-open .tray,body.plan-open #dock,body.plan-open .legend{display:none}
+  .guide{left:8px;right:8px;width:auto;bottom:calc(env(safe-area-inset-bottom,0px) + 72px);top:auto}
+}
 </style>
 
 <svg id="map" aria-label="Map of the conversation. The main thread runs from start to end; tangents branch off each theme."></svg>
@@ -557,11 +637,11 @@ body[data-zoom="near"] .fbadge{display:none}
   <button type="button" class="ghost" id="trayClear">clear</button>
 </div>
 
-<div class="viewpop glass" id="viewpop" hidden role="dialog" aria-label="View settings">
-  <header><h2>View</h2><span class="vp-lvl" aria-live="polite"><b id="lvlName">nodes</b> · <span id="lvlHint">zoom in for summaries</span></span></header>
-  <div class="vp-sec"><h3>Node types</h3><div class="tchips" id="tchips" role="group" aria-label="Show node types"></div></div>
-  <div class="vp-sec"><h3>Dot size</h3><span class="lsize"><i style="width:5px;height:5px"></i><i style="width:8px;height:8px"></i><i style="width:12px;height:12px"></i>how much sits under each node</span></div>
-</div>
+<section class="legend glass" id="legend" aria-labelledby="legendTitle">
+  <h2 id="legendTitle">Highlight</h2>
+  <div class="tchips" id="tchips" role="group" aria-label="Highlight nodes by type"></div>
+  <p class="lg-note">Dot size shows how much sits under a node.</p>
+</section>
 
 <nav class="dock glass" id="dock" aria-label="Tools">
   <button type="button" class="ibtn" id="selBtn" aria-pressed="false" aria-label="Select nodes" data-tip="Select nodes  ⇧-click"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M5 3.5l13 7.2-5.6 1.5-2.6 5.6z"/><path d="M13 13l5 5" stroke-linecap="round"/></svg></button>
@@ -574,15 +654,17 @@ body[data-zoom="near"] .fbadge{display:none}
     <button type="button" id="mMind" aria-pressed="false">Mind map</button>
   </div>
   <span class="sep"></span>
-  <button type="button" class="ibtn" id="shelfBtn" aria-pressed="false" aria-controls="shelf" aria-label="Workspaces" data-tip="Workspaces"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><rect x="3.5" y="7.5" width="12" height="12" rx="2"/><path d="M8.5 4.5h9a2 2 0 0 1 2 2v9"/></svg><span class="badge" id="shelfCount"></span></button>
-  <button type="button" class="ibtn" id="viewBtn" aria-expanded="false" aria-controls="viewpop" aria-label="View settings" data-tip="View"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M4 7.5h9M17.5 7.5H20M4 16.5h2.5M11 16.5h9"/><circle cx="15.2" cy="7.5" r="2.2"/><circle cx="8.8" cy="16.5" r="2.2"/></svg></button>
-  <button type="button" class="ibtn" id="transcriptBtn" aria-pressed="false" aria-controls="tdrawer" aria-label="Transcript" data-tip="Transcript"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M5 6h14M5 10.5h14M5 15h9M5 19.5h6"/></svg></button>
+  <button type="button" class="tbtn" id="shelfBtn" aria-pressed="false" aria-controls="shelf" data-tip="Boards you opened from nodes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><rect x="3.5" y="7.5" width="12" height="12" rx="2"/><path d="M8.5 4.5h9a2 2 0 0 1 2 2v9"/></svg><span class="tlabel">Workspaces</span><span class="badge" id="shelfCount"></span></button>
+  <button type="button" class="tbtn" id="transcriptBtn" aria-pressed="false" aria-controls="tdrawer" data-tip="Read what was said"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M5 6h14M5 10.5h14M5 15h9M5 19.5h6"/></svg><span class="tlabel">Transcript</span></button>
   <span class="sep"></span>
-  <button type="button" class="tbtn" id="liveBtn" aria-pressed="false"><span class="rec" aria-hidden="true"></span><span class="tlabel">Live</span></button>
-  <button type="button" class="tbtn" id="planBtn" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span class="tlabel">Next steps</span></button>
-  <button type="button" class="tbtn hot" id="importBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg><span class="tlabel">Transcripts</span></button>
+  <button type="button" class="tbtn" id="liveBtn" aria-pressed="false" data-tip="Map a conversation as you talk"><span class="rec" aria-hidden="true"></span><span class="tlabel">Live</span></button>
+  <button type="button" class="tbtn hot" id="planBtn" aria-pressed="false" data-tip="Turn this session into a checklist"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span class="tlabel">Next steps</span></button>
+  <button type="button" class="tbtn" id="importBtn" data-tip="Rebuild the map from transcripts or PDFs"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V4M7.5 8.5L12 4l4.5 4.5"/><path d="M5 14v4.5A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5V14"/></svg><span class="tlabel">Import</span></button>
+  <span class="sep"></span>
+  <button type="button" class="ibtn" id="guideBtn" aria-expanded="false" aria-controls="guide" aria-label="How Neura works" data-tip="How it works"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M9.6 9.6a2.5 2.5 0 1 1 3.4 2.3c-.6.3-1 .8-1 1.5v.6"/><circle cx="12" cy="16.9" r=".9" fill="currentColor" stroke="none"/></svg></button>
 </nav>
 
+<div class="zoomhint" aria-live="polite"><b id="lvlName">nodes</b> · <span id="lvlHint">zoom in for summaries</span></div>
 <div class="zoombox glass">
   <button type="button" id="zout" aria-label="Zoom out">−</button>
   <span class="zpct" id="zpct">100%</span>
@@ -610,6 +692,17 @@ body[data-zoom="near"] .fbadge{display:none}
 <div class="callout glass" id="callout" hidden></div>
 <div class="pop glass" id="pop" hidden role="dialog" aria-label="Node details"></div>
 <aside class="plan glass" id="plan" hidden aria-label="Next steps"></aside>
+<aside class="guide glass" id="guide" hidden aria-labelledby="guideTitle">
+  <header><h2 id="guideTitle">How Neura works</h2><button class="close" type="button" data-gclose aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></header>
+  <ol>
+    <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 3.5l13 7.2-5.6 1.5-2.6 5.6z"/></svg><p><b>Click any node</b> to read its summary, the quotes behind it and what it connects to.</p></li>
+    <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="7" cy="7" r="3"/><rect x="14" y="4" width="6" height="6" rx="1.5"/><path d="M7 14l3 3-3 3-3-3z"/><circle cx="17" cy="17" r="3"/></svg><p><b>Highlight a type</b> from the Highlight key: questions, actions, quotes and more.</p></li>
+    <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5 5M8 10.5h5M10.5 8v5"/></svg><p><b>Zoom in</b> and every node turns into a card you can read.</p></li>
+    <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3.5h7l4 4V20a.5.5 0 0 1-.5.5h-10.5a.5.5 0 0 1-.5-.5V4a.5.5 0 0 1 .5-.5z"/><path d="M14 3.5V8h4"/></svg><p><b>Drop a PDF, file or link</b> anywhere and Neura files it under the idea it matches.</p></li>
+    <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><p><b>Next steps</b> turns the session into a checklist of small tasks.</p></li>
+  </ol>
+  <button class="go" type="button" data-gok>Got it</button>
+</aside>
 
 <!-- workspace -->
 <div class="ws" id="ws" hidden>
@@ -1226,12 +1319,6 @@ panel.addEventListener('click', e => {
 });
 
 // ---------- legend + type filters ----------
-function toggleView(force){
-  const open = force ?? $('viewpop').hidden;
-  $('viewpop').hidden = !open; $('viewBtn').setAttribute('aria-expanded', open);
-}
-$('viewBtn').onclick = e => { e.stopPropagation(); toggleView(); };
-addEventListener('pointerdown', e => { if (!$('viewpop').hidden && !e.target.closest('#viewpop, #viewBtn')) toggleView(false); });
 // filter chips light up every node of that type (others dim); several can be on at once
 const FILTERS = [...TYPES, ['quote', 'quotes']];
 const hlTypes = new Set();
@@ -1241,8 +1328,8 @@ function refreshLegend(){
   const c = {quote: 0}; nodes.forEach(n => { if (n.type !== 'hub') c[n.type] = (c[n.type] || 0) + 1; if (n.quote && n.d > 0) c.quote++; });
   [...hlTypes].forEach(t => { if (!c[t]) hlTypes.delete(t); });
   hlSet = hlTypes.size ? new Set(nodes.filter(matchesHl).map(n => n.id)) : null;
-  $('tchips').innerHTML = FILTERS.filter(([t]) => c[t]).map(([t, name]) => `<button type="button" class="tchip" data-type="${t}" aria-pressed="${hlTypes.has(t)}">${typeIcon(t, t === 'quote' || t === 'suggestion' ? ACC : '#6b6978', 11)}${name}<span>${c[t]}</span></button>`).join('')
-    + (hlTypes.size ? `<button type="button" class="tchip clear" data-clear>clear</button>` : '');
+  $('tchips').innerHTML = FILTERS.filter(([t]) => c[t]).map(([t, name]) => `<button type="button" class="tchip" data-type="${t}" aria-pressed="${hlTypes.has(t)}">${typeIcon(t, t === 'quote' || t === 'suggestion' ? ACC : '#5d5b6a', 12)}<em>${name[0].toUpperCase() + name.slice(1)}</em><span>${c[t]}</span></button>`).join('')
+    + `<button type="button" class="tchip clear" data-clear ${hlTypes.size ? '' : 'hidden'}>Clear highlight</button>`;
 }
 $('tchips').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return;
@@ -1343,7 +1430,7 @@ function placePop(){
   const t = d3.zoomTransform(svg.node()), n = popNode, sx = t.applyX(n.x), sy = t.applyY(n.y), r = (lvl === 'near' ? 84 : n.r) * t.k;
   const w = pop.offsetWidth, h = pop.offsetHeight;
   let left = sx + r + 14; if (left + w > innerWidth - 16) left = sx - r - 14 - w; left = Math.max(16, left);
-  const top = Math.min(Math.max(sy - 46, 110), innerHeight - h - 16);
+  const top = Math.min(Math.max(sy - 46, 72), innerHeight - h - 84);   // stay clear of the bottom toolbar
   pop.style.left = Math.round(left) + 'px'; pop.style.top = Math.round(Math.max(16, top)) + 'px';
 }
 $('pop').addEventListener('click', e => {
@@ -1398,44 +1485,81 @@ function openPlan(){
 function closePlan(){ if ($('plan').hidden) return; $('plan').hidden = true; document.body.classList.remove('plan-open'); $('planBtn').setAttribute('aria-pressed', 'false'); }
 $('planBtn').onclick = () => $('plan').hidden ? openPlan() : closePlan();
 function aiAvailable(){ return !!sample || !!store.get('neura-or-key'); }
+const fmtMin = m => m >= 60 ? `${Math.floor(m / 60)} h${m % 60 ? ' ' + (m % 60) + ' m' : ''}` : `${m} m`;
+const ICON = {
+  spark: '<path d="M12 3.5l1.9 5.1 5.1 1.9-5.1 1.9L12 17.5l-1.9-5.1L5 10.5l5.1-1.9z"/><path d="M18.5 16v4M16.5 18h4"/>',
+  copy: '<rect x="8.5" y="8.5" width="11" height="11" rx="2"/><path d="M15.5 8.5V6a1.5 1.5 0 0 0-1.5-1.5H6A1.5 1.5 0 0 0 4.5 6v8A1.5 1.5 0 0 0 6 15.5h2.5"/>',
+  redo: '<path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3"/><path d="M19.5 4.5v5h-5"/>',
+  chev: '<path d="M9.5 6l6 6-6 6"/>',
+  check: '<path d="M5.5 12.5l4 4L18.5 7.5"/>'
+};
+const ico = (k, sz = 15, w = 1.8) => `<svg width="${sz}" height="${sz}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[k]}</svg>`;
+let checkpointPlan = null;
 function renderPlan(msg, busy){
-  const all = plan.tasks.flatMap(t => t.steps.map((_, si) => `${t.id}:${si}`)), done = all.filter(k => plan.done[k]).length;
-  const mins = plan.tasks.reduce((a, t) => a + t.steps.reduce((b, st, si) => b + (plan.done[`${t.id}:${si}`] ? 0 : (+st.m || 0)), 0), 0);
+  const key = (t, si) => `${t.id}:${si}`;
+  const all = plan.tasks.flatMap(t => t.steps.map((_, si) => key(t, si))), done = all.filter(k => plan.done[k]).length;
+  const left = plan.tasks.reduce((a, t) => a + t.steps.reduce((b, st, si) => b + (plan.done[key(t, si)] ? 0 : (+st.m || 0)), 0), 0);
+  const isDone = t => t.steps.every((_, si) => plan.done[key(t, si)]);
+  if (!Array.isArray(plan.open)){ const f = plan.tasks.find(t => !isDone(t)); plan.open = f ? [f.id] : []; }
   const srcOf = t => (t.src || []).filter(id => byId.has(id));
-  $('plan').innerHTML = `<div class="p-head"><span class="tag">✓ next steps</span><button class="close" type="button" data-pclose aria-label="Close next steps"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
-    <h2>${esc(MAP.title)}</h2>
-    <p class="pl-sub">${plan.tasks.length} tasks · ${done}/${all.length} steps done${mins ? ` · about ${mins >= 60 ? Math.round(mins / 6) / 10 + ' h' : mins + ' min'} left` : ''} · ${plan.by === 'ai' ? `written by AI${plan.model ? ' (' + esc(plan.model.split('/').pop()) + ')' : ''}` : 'built from the map'}</p>
-    <div class="pl-prog" aria-hidden="true"><i style="width:${all.length ? Math.round(done / all.length * 100) : 0}%"></i></div>
+  const by = plan.by === 'ai' ? `written by AI${plan.model ? ' (' + esc(plan.model.split('/').pop()) + ')' : ''}` : 'built from the map';
+  $('plan').innerHTML = `
+    <header class="pl-head"><div><h2>Next steps</h2><p class="pl-sub">${esc(MAP.title)} · ${by}</p></div>
+      <button class="close" type="button" data-pclose aria-label="Close next steps"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></header>
+    ${plan.tasks.length ? `
+    <div class="pl-sum"><p><b>${done}</b> of ${all.length} steps done</p><span>${left ? `about ${fmtMin(left)} left` : 'all done'}</span></div>
+    <div class="pl-prog" role="progressbar" aria-label="Steps done" aria-valuemin="0" aria-valuemax="${all.length}" aria-valuenow="${done}"><i style="width:${all.length ? Math.round(done / all.length * 100) : 0}%"></i></div>` : ''}
     <div class="pl-tools">
-      <button class="go" type="button" data-pai ${busy ? 'disabled' : ''}>${busy ? '✦ writing…' : '✦ break it down with AI'}</button>
-      <button class="ghost" type="button" data-pcopy>copy checklist</button>
-      <button class="ghost" type="button" data-premake>rebuild from map</button>
+      <button class="go" type="button" data-pai ${busy ? 'disabled' : ''}>${ico('spark')}<span>${busy ? 'Writing…' : 'Break down with AI'}</span></button>
+      <button class="ghost" type="button" data-pcopy title="Copy as a markdown checklist">${ico('copy')}<span>Copy</span></button>
+      <button class="ghost" type="button" data-premake title="Rebuild the list from the map as it is now">${ico('redo')}<span>Rebuild</span></button>
     </div>
     ${msg ? `<p class="${busy ? 'progress' : 'err'}">${busy ? '<span class="spin" aria-hidden="true"></span>' : ''}<span>${esc(msg)}</span></p>` : ''}
-    ${plan.tasks.length ? plan.tasks.map(t => {
-      const tk = t.steps.map((_, si) => `${t.id}:${si}`), td = tk.filter(k => plan.done[k]).length;
-      return `<div class="pl-task ${td === tk.length ? 'done' : ''}"><h3>${esc(t.title)}<span>${td}/${tk.length}</span></h3>
-        ${t.why ? `<p class="pl-why">${esc(t.why)}</p>` : ''}
-        <ul class="pl-steps">${t.steps.map((st, si) => `<li><label><input type="checkbox" data-step="${t.id}:${si}" ${plan.done[`${t.id}:${si}`] ? 'checked' : ''}><span>${esc(st.t)}</span>${st.m ? `<small>${st.m}m</small>` : ''}</label></li>`).join('')}</ul>
-        ${srcOf(t).length ? `<div class="pl-src">${srcOf(t).slice(0, 4).map(id => { const n = byId.get(id); return `<button type="button" data-psrc="${id}">${typeIcon(n.type, n.color, 9)}${esc(n.label)}</button>`; }).join('')}</div>` : ''}
-      </div>`; }).join('') : `<p class="body-text" style="color:var(--muted)">There isn’t enough on the map yet to suggest steps. Add actions, questions or ideas first.</p>`}
+    ${plan.tasks.length ? `<ol class="pl-list">${plan.tasks.map((t, ti) => {
+      const tk = t.steps.map((_, si) => key(t, si)), td = tk.filter(k => plan.done[k]).length, fin = td === tk.length;
+      const mins = t.steps.reduce((a, st) => a + (+st.m || 0), 0), src = srcOf(t);
+      return `<li class="pl-task ${fin ? 'done' : ''}"><details data-task="${t.id}" ${plan.open.includes(t.id) ? 'open' : ''}>
+        <summary><span class="pl-num" aria-hidden="true">${fin ? ico('check', 13, 2.6) : ti + 1}</span><span class="pl-tt"><b>${esc(t.title)}</b><small>${td} of ${tk.length} done${mins ? ' · ' + fmtMin(mins) : ''}</small></span>${ico('chev', 15)}</summary>
+        <div class="pl-body">
+          ${t.why ? `<p class="pl-why">${esc(t.why)}</p>` : ''}
+          ${src.length ? `<p class="pl-from"><span>From</span>${src.slice(0, 3).map(id => { const n = byId.get(id); return `<button type="button" data-psrc="${id}" title="Show it on the map">${typeIcon(n.type, n.color, 10)}${esc(n.label)}</button>`; }).join('')}</p>` : ''}
+          <ul class="pl-steps">${t.steps.map((st, si) => `<li><label><input type="checkbox" data-step="${key(t, si)}" ${plan.done[key(t, si)] ? 'checked' : ''}><span>${esc(st.t)}</span>${st.m ? `<small>${fmtMin(st.m)}</small>` : '<small></small>'}</label></li>`).join('')}</ul>
+        </div></details></li>`; }).join('')}</ol>`
+      : `<p class="pl-empty">There isn’t enough on the map yet to suggest steps. Add actions, questions or ideas, then press Rebuild.</p>`}
     <details class="pl-key"><summary>AI settings</summary>
-      <span>${sample ? 'Using Claude inside this page.' : 'To write the plan with AI here, paste an <b style="color:var(--fg)">OpenRouter</b> key. It’s saved only in this browser and sent only to openrouter.ai. Never put a key in the code: this page is public.'}</span>
-      ${sample ? '' : store.get('neura-or-key') ? `<div class="row2"><span style="flex:1">key saved in this browser ✓</span><button class="ghost" type="button" data-pkeydel>remove key</button></div>`
-        : `<div class="row2"><input type="password" id="orKey" placeholder="sk-or-…" autocomplete="off" aria-label="OpenRouter key"><button class="ghost" type="button" data-pkeysave>save</button></div>`}
+      <p>${sample ? 'Using Claude inside this page.' : 'To write the list with AI here, paste an <b style="color:var(--fg)">OpenRouter</b> key. It’s saved only in this browser and sent only to openrouter.ai. Never put a key in the code: this page is public.'}</p>
+      ${sample ? '' : store.get('neura-or-key') ? `<div class="row2"><span style="flex:1">Key saved in this browser</span><button class="ghost" type="button" data-pkeydel>Remove key</button></div>`
+        : `<div class="row2"><input type="password" id="orKey" placeholder="sk-or-…" autocomplete="off" aria-label="OpenRouter key"><button class="ghost" type="button" data-pkeysave>Save</button></div>`}
     </details>`;
 }
+// remember which tasks are expanded
+$('plan').addEventListener('toggle', e => {
+  const d = e.target; if (!plan || !d.dataset || !d.dataset.task) return;
+  const open = new Set(plan.open || []); d.open ? open.add(d.dataset.task) : open.delete(d.dataset.task);
+  plan.open = [...open]; savePlan();
+}, true);
+
+// ---------- how-it-works guide: shown once, reopened from the ? in the dock ----------
+function toggleGuide(force){
+  const open = force ?? $('guide').hidden;
+  $('guide').hidden = !open; $('guideBtn').setAttribute('aria-expanded', open); document.body.classList.toggle('guide-open', open);
+  if (!open) store.set('neura-guide-seen', 1);
+}
+$('guideBtn').onclick = () => toggleGuide();
+$('guide').addEventListener('click', e => { if (e.target.closest('[data-gok], [data-gclose]')) toggleGuide(false); });
+if (!store.get('neura-guide-seen')) setTimeout(() => { if ($('ws').hidden && $('plan').hidden) toggleGuide(true); }, 700);
+
 $('plan').addEventListener('change', e => {
   const k = e.target.dataset?.step; if (!k) return;
   if (e.target.checked) plan.done[k] = true; else delete plan.done[k];
   savePlan(); const scroll = $('plan').scrollTop; renderPlan(); $('plan').scrollTop = scroll;
-  if (e.target.checked && plan.tasks.every(t => t.steps.every((_, si) => plan.done[`${t.id}:${si}`]))) toast('every step done ✓');
+  if (e.target.checked && plan.tasks.every(t => t.steps.every((_, si) => plan.done[`${t.id}:${si}`]))) toast('every step done');
 });
 $('plan').addEventListener('click', async e => {
   const b = e.target.closest('button'); if (!b) return;
   if (b.hasAttribute('data-pclose')) return closePlan();
   if (b.dataset.psrc){ const n = byId.get(b.dataset.psrc); if (!n) return; if (innerWidth <= 760) closePlan(); return focusDrop([n.id], parentOf[n.id], {ms: 4000}); }
-  if (b.hasAttribute('data-premake')){ plan = {by: 'map', tasks: makePlan(), done: {}}; savePlan(); renderPlan(); return toast('plan rebuilt from the map'); }
+  if (b.hasAttribute('data-premake')){ checkpointPlan = plan; plan = {by: 'map', tasks: makePlan(), done: {}}; savePlan(); renderPlan(); return toast('list rebuilt from the map', {label: 'undo', fn: () => { plan = checkpointPlan; savePlan(); renderPlan(); }}); }
   if (b.hasAttribute('data-pcopy')){
     const md = `# Next steps: ${MAP.title}\n\n` + plan.tasks.map(t => `## ${t.title}\n${t.why ? t.why + '\n' : ''}` + t.steps.map((st, si) => `- [${plan.done[`${t.id}:${si}`] ? 'x' : ' '}] ${st.t}${st.m ? ` (${st.m} min)` : ''}`).join('\n')).join('\n\n');
     try { await navigator.clipboard.writeText(md); toast('checklist copied'); } catch (err) { toast('Couldn’t copy. Your browser blocked the clipboard.'); }
@@ -2349,7 +2473,7 @@ $('wsFile').onclick = () => $('wsFiles').click();
 $('wsFiles').onchange = e => { const r = board.getBoundingClientRect(); wsDropFiles([...e.target.files], r.left + r.width / 2, r.top + r.height / 2); e.target.value = ''; };
 addEventListener('keydown', e => {
   if (e.key === 'Escape'){
-    if (!$('viewpop').hidden) return toggleView(false);
+    if (!$('guide').hidden) return toggleGuide(false);
     if (!$('sheet').hidden) return closeImport();
     if (!$('ws').hidden){ if (document.activeElement?.isContentEditable) return document.activeElement.blur(); return closeWorkspace(); }
     if (selected) closePanel();
@@ -2620,9 +2744,9 @@ function renderDrawer(){
   }).join('');
   const prevScroll = tdrawer.scrollTop;
   tdrawer.innerHTML = `
-    <div class="p-head"><h2>transcript</h2><button class="close" type="button" data-tclose aria-label="Close transcript"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+    <div class="p-head"><h2>Transcript</h2><button class="close" type="button" data-tclose aria-label="Close transcript"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
     <p class="empty" style="margin-top:-6px">${lines.length ? `${lines.length} line${lines.length === 1 ? '' : 's'}${live.on ? ' · live' : ''} · hover a line to see the nodes it made` : MAP.id === 'sample' ? 'The sample map was curated by hand, so it has no saved transcript. Start a live session or drop transcripts to get one.' : 'No transcript yet. Press Live in the toolbar to start one.'}</p>
-    ${lines.length ? `<div class="t-tools"><button class="ghost" type="button" data-tcopy>copy</button><button class="ghost" type="button" data-tdl>download .txt</button></div>` : ''}
+    ${lines.length ? `<div class="t-tools"><button class="ghost" type="button" data-tcopy>copy</button><button class="ghost" type="button" data-tdl>download .txt</button></div>` : `<div class="t-tools"><button class="go" type="button" data-tlive>Start Live</button><button class="ghost" type="button" data-timport>Import a transcript</button></div>`}
     <div class="tlist">${rows}</div>`;
   if (live.on && live.follow) tdrawer.scrollTop = tdrawer.scrollHeight; else tdrawer.scrollTop = prevScroll;
 }
@@ -2631,6 +2755,8 @@ tdrawer.addEventListener('scroll', () => { if (live.on) live.follow = tdrawer.sc
 tdrawer.addEventListener('click', async e => {
   const b = e.target.closest('button'); if (!b) return;
   if (b.hasAttribute('data-tclose')) return toggleTranscript(false);
+  if (b.hasAttribute('data-tlive')){ toggleTranscript(false); return $('liveBtn').click(); }
+  if (b.hasAttribute('data-timport')){ toggleTranscript(false); return $('importBtn').click(); }
   if (b.hasAttribute('data-tcopy')){ try { await navigator.clipboard.writeText(transcriptText()); toast('transcript copied'); } catch (err) { toast('couldn’t copy. Use download instead.'); } return; }
   if (b.hasAttribute('data-tdl')){
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([transcriptText()], {type: 'text/plain'}));
