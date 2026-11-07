@@ -689,7 +689,12 @@ body.live-on .tstrip{bottom:calc(env(safe-area-inset-bottom,0px) + 104px)}
 .hero .idle{display:contents}
 body.live-on .hero .idle{display:none}
 body.live-on .hero .listening{display:flex}
-body.empty-map #map > *{visibility:hidden}
+body.empty-map:not(.live-on) #map > *{visibility:hidden}
+/* while recording a blank map, the starting hexagon stays in the middle; the listening note sits below it */
+body.live-on .hero{top:auto;bottom:calc(env(safe-area-inset-bottom,0px) + 120px);transform:translateX(-50%);gap:8px}
+body.live-on .hero .orb{display:none}
+body.live-on .hero h1{font-size:20px}
+body.live-on .hero .lede{font-size:13px}
 body.empty-map .legend,body.empty-map .replay,body.empty-map .zoombox,body.empty-map .zoomhint,body.empty-map .tray{display:none}
 body.empty-map #planBtn,body.empty-map #selBtn,body.empty-map #tidyBtn,body.empty-map #pathBtn{opacity:.4;pointer-events:none}
 @media (max-width:760px){.hero h1{font-size:24px}.hero .lede{font-size:13.5px}.hero .steps{display:none}}
