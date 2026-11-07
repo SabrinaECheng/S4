@@ -655,7 +655,9 @@ body.panel-open .guide,body.plan-open .guide{display:none}
   </div>
   <span class="sep"></span>
   <button type="button" class="tbtn" id="shelfBtn" aria-pressed="false" aria-controls="shelf" data-tip="Boards you opened from nodes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><rect x="3.5" y="7.5" width="12" height="12" rx="2"/><path d="M8.5 4.5h9a2 2 0 0 1 2 2v9"/></svg><span class="tlabel">Workspaces</span><span class="badge" id="shelfCount"></span></button>
+  <!-- Transcript button hidden: the transcript feature isn't working yet.
   <button type="button" class="tbtn" id="transcriptBtn" aria-pressed="false" aria-controls="tdrawer" data-tip="Read what was said"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M5 6h14M5 10.5h14M5 15h9M5 19.5h6"/></svg><span class="tlabel">Transcript</span></button>
+  -->
   <span class="sep"></span>
   <button type="button" class="tbtn" id="liveBtn" aria-pressed="false" data-tip="Map a conversation as you talk"><span class="rec" aria-hidden="true"></span><span class="tlabel">Live</span></button>
   <button type="button" class="tbtn hot" id="planBtn" aria-pressed="false" data-tip="Turn this session into a checklist"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span class="tlabel">Next steps</span></button>
@@ -2718,11 +2720,12 @@ function renderStrip(){
 $('tstrip').onclick = () => openTranscript();
 
 const tdrawer = $('tdrawer');
-$('transcriptBtn').onclick = () => toggleTranscript();
+// Transcript button is commented out in the dock; feature isn't working yet.
+// $('transcriptBtn').onclick = () => toggleTranscript();
 function toggleTranscript(force){
   const open = force ?? tdrawer.hidden;
   if (open && !shelf.hidden) toggleShelf(false);
-  tdrawer.hidden = !open; document.body.classList.toggle('shelf-open', open); $('transcriptBtn').setAttribute('aria-pressed', open);
+  tdrawer.hidden = !open; document.body.classList.toggle('shelf-open', open); $('transcriptBtn')?.setAttribute('aria-pressed', open);
   if (open){ live.follow = true; renderDrawer(); } else { wsHoverIds = null; paint(); }
 }
 function openTranscript(t){
