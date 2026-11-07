@@ -1,0 +1,1264 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Neura (Copy)</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap">
+<style>
+/* Layout: full-bleed map with toolbar top, replay bar bottom, detail drawer right.
+   Selected nodes open a full-screen infinite whiteboard (the workspace). One dark world, Space Mono throughout. */
+:root{
+  --bg:#060a12; --surface:rgba(11,17,28,.9); --surface-2:#142033; --line:#22314a;
+  --fg:#e3ebf6; --lbl:#b4c3d6; --muted:#8597ae; --accent:#8be2ea; --warn:#ffb4a2;
+  --code:'Space Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{background:var(--bg);color:var(--fg);font-family:var(--code);font-size:11.5px;overflow:hidden;-webkit-font-smoothing:antialiased;
+  padding-left:max(16px, env(safe-area-inset-left,0px));padding-right:max(16px, env(safe-area-inset-right,0px));padding-block:0}
+button,input,select{font:inherit;color:inherit}
+#map{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:grab;touch-action:none;
+  background:radial-gradient(ellipse at 50% 45%, #0f1b2c 0%, #0a121f 50%, var(--bg) 95%)}
+#map:active{cursor:grabbing}
+.glass{background:var(--surface);border:1px solid var(--line);border-radius:4px;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+
+/* ---- map marks ---- */
+.edge{fill:none;stroke-linecap:round;vector-effect:non-scaling-stroke}
+.cross{fill:none;stroke:#b2d2df;stroke-dasharray:4 5;stroke-opacity:.45;vector-effect:non-scaling-stroke}
+.spine{fill:none;stroke:var(--accent);stroke-width:3.5;stroke-linecap:round;vector-effect:non-scaling-stroke;opacity:.85}
+.convpath{fill:none;stroke:#fff;stroke-opacity:.28;stroke-width:1.2;stroke-dasharray:1 5;stroke-linecap:round;vector-effect:non-scaling-stroke}
+body.playing .convpath{animation:march 1.2s linear infinite}
+@keyframes march{to{stroke-dashoffset:-12}}
+.neb{mix-blend-mode:screen;pointer-events:none}
+.node{cursor:pointer}
+.node .body{vector-effect:non-scaling-stroke}
+.node .core{pointer-events:none}
+.node .pickring{fill:none;stroke:var(--accent);stroke-width:1.5;stroke-dasharray:3 3;vector-effect:non-scaling-stroke;display:none;pointer-events:none}
+.node.picked .pickring{display:inline}
+.node.sel .body{stroke:#fff;stroke-width:2}
+.node:focus{outline:none}
+.node:focus-visible .body{stroke:var(--accent);stroke-width:3}
+.node.fade{opacity:.25}
+.node.born .body{animation:born .9s ease-out}
+@keyframes born{0%{r:0}60%{r:18}100%{}}
+.ring{fill:none;stroke:var(--accent);stroke-width:1.5;vector-effect:non-scaling-stroke;pointer-events:none;animation:ping 1.6s ease-out infinite}
+@keyframes ping{0%{r:6;opacity:.9}100%{r:30;opacity:0}}
+.lbl{fill:var(--lbl);font-family:var(--code);pointer-events:none;paint-order:stroke;stroke:var(--bg);stroke-width:3px;stroke-linejoin:round}
+.lbl.t0,.lbl.t1{fill:var(--fg);font-weight:700}
+body[data-zoom="far"] .lbl.t2,body[data-zoom="far"] .lbl.t3{display:none}
+body[data-zoom="mid"] .lbl.t3{opacity:.75}
+body[data-zoom="near"] .lbl,body[data-zoom="near"] .node .body,body[data-zoom="near"] .node .core,body[data-zoom="near"] .node .pickring{display:none}
+.node.lit .lbl{fill:var(--fg);opacity:1!important}
+.tick{fill:var(--muted);font-family:var(--code);letter-spacing:.1em;pointer-events:none}
+
+.cardfo{display:none;overflow:visible}
+body[data-zoom="near"] .cardfo{display:inline}
+.card{width:168px;padding:7px 8px 8px;border-radius:3px;background:rgba(10,17,29,.94);border:1px solid color-mix(in srgb, var(--c) 45%, transparent);
+  box-shadow:0 0 14px color-mix(in srgb, var(--c) 22%, transparent);font-family:var(--code);color:var(--fg);display:flex;flex-direction:column;gap:4px}
+.node.sel .card{border-color:var(--c);box-shadow:0 0 22px color-mix(in srgb, var(--c) 45%, transparent)}
+.node.picked .card{outline:1.5px dashed var(--accent);outline-offset:3px}
+.c-head{display:flex;align-items:center;gap:5px;font-size:5.4px;letter-spacing:.08em;text-transform:uppercase;color:var(--c)}
+.c-head i{width:6px;height:6px;border-radius:50%;background:var(--c);box-shadow:0 0 6px var(--c);flex:none}
+.c-head span:last-child{margin-left:auto;color:var(--muted)}
+.c-title{font-size:8.2px;font-weight:700;line-height:1.3}
+.c-body{font-size:6.1px;line-height:1.55;color:var(--lbl);display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden}
+.c-quote{font-size:5.9px;line-height:1.5;color:var(--accent);font-style:italic;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+
+/* ---- map chrome ---- */
+.bar{position:fixed;top:calc(env(safe-area-inset-top,0px) + 14px);left:max(16px, env(safe-area-inset-left,0px));right:max(16px, env(safe-area-inset-right,0px));
+  display:flex;flex-wrap:wrap;align-items:center;gap:8px;pointer-events:none;z-index:5}
+.bar > *{pointer-events:auto}
+.brand{display:flex;align-items:center;gap:10px;padding:7px 12px 7px 8px;min-width:0}
+.mark{width:22px;height:22px;border-radius:7px;background:radial-gradient(circle at 40% 35%,#c8fff5,#56b9da 40%,#2f477d 70%);box-shadow:0 0 16px #64c9e666;flex:none}
+.brand h1{margin:0;font-size:15px;font-weight:700;letter-spacing:-.02em;line-height:1.1}
+.brand h1 span{color:var(--accent)}
+.brand p{margin:0;font-size:10px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:34ch}
+.live{color:var(--accent)}
+.live::before{content:'';display:inline-block;width:6px;height:6px;border-radius:50%;background:#ff6b6b;margin-right:5px;vertical-align:1px;box-shadow:0 0 6px #ff6b6b}
+.seg,.tools{display:flex;padding:3px;gap:2px}
+.seg button,.tbtn{background:none;border:0;border-radius:3px;padding:6px 10px;font-size:10.5px;color:var(--muted);cursor:pointer;white-space:nowrap}
+.seg button[aria-pressed="true"]{background:var(--surface-2);color:var(--fg)}
+.seg button:hover,.tbtn:hover{color:var(--fg)}
+.tbtn[aria-pressed="true"]{color:var(--accent)}
+.tbtn.hot{color:var(--accent)}
+.seg button:focus-visible,.tbtn:focus-visible{outline:1px solid var(--accent)}
+
+.tray{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 112px);z-index:6;display:flex;align-items:center;gap:10px;padding:6px 6px 6px 12px;
+  border-color:var(--accent);box-shadow:0 0 24px rgba(139,226,234,.18);white-space:nowrap}
+.tray .dots{display:flex}
+.tray .dots .dot{margin-left:-3px;border:1px solid var(--bg)}
+.go{background:var(--accent);color:var(--bg);border:0;border-radius:3px;padding:7px 11px;font-size:11px;font-weight:700;cursor:pointer}
+.go:hover{filter:brightness(1.1)}
+.go:focus-visible{outline:2px solid var(--fg);outline-offset:2px}
+.go:disabled{opacity:.4;cursor:default}
+.ghost{background:none;border:1px solid var(--line);border-radius:3px;padding:6px 10px;font-size:10.5px;color:var(--muted);cursor:pointer}
+.ghost:hover{color:var(--fg);border-color:var(--muted)}
+.ghost:focus-visible{outline:1px solid var(--accent)}
+
+.replay{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 16px);z-index:5;
+  width:min(720px, calc(100vw - 32px - 56px));display:grid;grid-template-columns:auto 1fr auto;gap:6px 12px;align-items:center;padding:8px 12px 10px 8px}
+body.panel-open .replay,body.panel-open .tray{transform:translateX(calc(-50% - 175px))}
+.play{width:34px;height:34px;border-radius:50%;border:1px solid var(--line);background:var(--surface-2);cursor:pointer;display:grid;place-items:center;color:var(--accent);grid-row:span 2}
+.play:hover{border-color:var(--accent)}
+.play:focus-visible{outline:1px solid var(--accent);outline-offset:2px}
+#scrub{width:100%;accent-color:#8be2ea;margin:0}
+.count{font-size:10px;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.ticker{grid-column:2 / 4;font-size:10.5px;color:var(--lbl);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.ticker b{color:var(--accent);font-weight:400}
+
+.zoombox{position:fixed;right:max(16px, env(safe-area-inset-right,0px));bottom:calc(env(safe-area-inset-bottom,0px) + 16px);z-index:5;display:flex;flex-direction:column;overflow:hidden}
+.zoombox button{background:none;border:0;width:34px;height:34px;cursor:pointer;display:grid;place-items:center;font-size:14px}
+.zoombox button + button{border-top:1px solid var(--line)}
+.zoombox button:hover{background:var(--surface-2)}
+.zoombox button:focus-visible{outline:1px solid var(--accent);outline-offset:-2px}
+body.panel-open .zoombox{right:calc(358px + max(16px, env(safe-area-inset-right,0px)))}
+.zoomlvl{position:fixed;left:max(16px, env(safe-area-inset-left,0px));bottom:calc(env(safe-area-inset-bottom,0px) + 16px);z-index:5;padding:7px 10px;font-size:10px;color:var(--muted);display:flex;flex-direction:column;gap:2px}
+.zoomlvl b{color:var(--fg);font-weight:400}
+
+.panel{position:fixed;top:calc(env(safe-area-inset-top,0px) + 14px);right:max(16px, env(safe-area-inset-right,0px));bottom:calc(env(safe-area-inset-bottom,0px) + 14px);width:330px;z-index:7;
+  overflow-y:auto;padding:14px 16px 20px;display:flex;flex-direction:column;gap:15px;box-shadow:0 20px 60px rgba(0,0,0,.6)}
+.p-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.tag{display:inline-flex;align-items:center;gap:6px;font-size:10px;background:var(--surface-2);border-radius:3px;padding:4px 8px 4px 7px;min-width:0}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--c);box-shadow:0 0 6px var(--c);flex:none;display:inline-block}
+.close{background:none;border:0;width:30px;height:30px;border-radius:3px;cursor:pointer;display:grid;place-items:center;color:var(--muted);flex:none}
+.close:hover{background:var(--surface-2);color:var(--fg)}
+.close:focus-visible{outline:1px solid var(--accent)}
+.panel h2{margin:0;font-size:16px;font-weight:700;line-height:1.35;letter-spacing:-.01em;text-wrap:balance}
+.meta{margin:-8px 0 0;font-size:10px;color:var(--muted)}
+.panel section{display:flex;flex-direction:column;gap:7px}
+.panel h3{margin:0;font-size:10px;font-weight:400;color:var(--muted)}
+.panel h3::before{content:'// ';color:var(--accent)}
+.body-text{margin:0;font-size:11.5px;line-height:1.7}
+blockquote{margin:0;padding:9px 11px;background:var(--surface-2);border-radius:3px;font-size:11.5px;line-height:1.6;color:var(--accent);font-style:italic}
+.rows{display:flex;flex-direction:column;gap:2px}
+.row{background:none;border:0;border-radius:3px;padding:6px 7px;text-align:left;font-size:11px;cursor:pointer;display:flex;align-items:center;gap:9px}
+.row:hover{background:var(--surface-2)}
+.row:focus-visible{outline:1px solid var(--accent)}
+.actions{display:flex;gap:6px;flex-wrap:wrap}
+.navrow{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.btn{background:var(--surface-2);border:1px solid var(--line);border-radius:3px;padding:8px 10px;font-size:10.5px;cursor:pointer;text-align:left;min-width:0}
+.btn:hover{border-color:var(--accent)}
+.btn:disabled{opacity:.35;cursor:default}
+.btn:focus-visible{outline:1px solid var(--accent)}
+.btn small{display:block;color:var(--muted);font-size:9.5px;margin-bottom:2px}
+.btn span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.foot{font-size:9.5px;color:var(--muted);margin-top:auto}
+
+/* ---- drop + import ---- */
+.dropzone{position:fixed;inset:12px;z-index:30;border:1.5px dashed var(--accent);border-radius:10px;background:rgba(6,10,18,.82);display:grid;place-items:center;text-align:center;pointer-events:none;
+  box-shadow:inset 0 0 60px rgba(139,226,234,.12)}
+.dropzone b{display:block;font-size:16px;margin-bottom:6px}
+.dropzone span{color:var(--muted);font-size:11px}
+.sheet{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:31;width:min(460px, calc(100vw - 32px));max-height:calc(100vh - 48px);overflow-y:auto;
+  padding:18px 18px 16px;display:flex;flex-direction:column;gap:14px;box-shadow:0 30px 80px rgba(0,0,0,.7);background:#0b111c}
+.sheet h2{margin:0;font-size:14px;font-weight:700}
+.sheet p{margin:0;font-size:11px;line-height:1.65;color:var(--lbl)}
+.files{display:flex;flex-direction:column;gap:4px}
+.file-row{display:flex;justify-content:space-between;gap:10px;padding:7px 9px;background:var(--surface-2);border-radius:3px;font-size:10.5px}
+.file-row span:last-child{color:var(--muted);white-space:nowrap}
+.file-row.bad span:last-child{color:var(--warn)}
+.opts{display:flex;flex-direction:column;gap:6px}
+.opt{display:flex;gap:9px;align-items:flex-start;padding:9px 10px;border:1px solid var(--line);border-radius:3px;cursor:pointer;font-size:11px;line-height:1.5}
+.opt:has(input:checked){border-color:var(--accent)}
+.opt input{accent-color:#8be2ea;margin:2px 0 0}
+.opt small{display:block;color:var(--muted);font-size:10px}
+.sheet .actions{justify-content:flex-end}
+.progress{font-size:10.5px;color:var(--accent);display:flex;gap:8px;align-items:center}
+.spin{width:10px;height:10px;border-radius:50%;border:1.5px solid var(--accent);border-right-color:transparent;animation:spin .8s linear infinite;flex:none}
+@keyframes spin{to{transform:rotate(360deg)}}
+.err{color:var(--warn)!important}
+.linkish{background:none;border:0;padding:0;color:var(--muted);text-decoration:underline;cursor:pointer;font-size:10px;align-self:flex-start}
+.linkish:hover{color:var(--fg)}
+.backdrop{position:fixed;inset:0;z-index:29;background:rgba(0,0,0,.45)}
+.toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 70px);transform:translateX(-50%);z-index:40;padding:8px 12px;font-size:11px;border-color:var(--accent)}
+
+/* ---- workspace ---- */
+.ws{position:fixed;inset:0;z-index:20;background:#070b13;display:flex;flex-direction:column}
+.ws-bar{position:relative;z-index:2;display:flex;flex-wrap:wrap;align-items:center;gap:8px;
+  padding-top:calc(env(safe-area-inset-top,0px) + 12px);padding-bottom:10px;padding-left:max(16px, env(safe-area-inset-left,0px));padding-right:max(16px, env(safe-area-inset-right,0px));
+  border-bottom:1px solid var(--line);background:#0a101b}
+.ws-title{display:flex;flex-direction:column;gap:2px;margin-right:auto;min-width:0}
+.ws-title b{font-size:13px}
+.ws-title span{font-size:10px;color:var(--muted);display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.ws-chip{display:inline-flex;align-items:center;gap:5px;background:var(--surface-2);border-radius:3px;padding:2px 7px;color:var(--lbl)}
+.ws-tools{display:flex;gap:2px;padding:3px}
+.board{position:relative;flex:1;overflow:hidden;cursor:grab;touch-action:none;
+  background-color:#070b13;background-image:radial-gradient(rgba(141,184,211,.22) 1px, transparent 1px)}
+.board:active{cursor:grabbing}
+.world{position:absolute;left:0;top:0;transform-origin:0 0}
+.wlinks{position:absolute;left:0;top:0;overflow:visible;pointer-events:none}
+.wlinks path{fill:none;stroke:rgba(139,226,234,.35);stroke-width:1.2;stroke-dasharray:4 5}
+.item{position:absolute;border-radius:4px;cursor:grab;user-select:none}
+.item.sel{outline:1.5px solid var(--accent);outline-offset:3px}
+.item.dragging{cursor:grabbing;z-index:5}
+.ncard{width:270px;padding:12px 13px 13px;background:#0d1524;border:1px solid color-mix(in srgb, var(--c) 50%, transparent);box-shadow:0 0 26px color-mix(in srgb, var(--c) 18%, transparent);display:flex;flex-direction:column;gap:7px}
+.i-head{display:flex;align-items:center;gap:6px;font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--c, var(--muted))}
+.i-head i{width:8px;height:8px;border-radius:50%;background:var(--c);box-shadow:0 0 8px var(--c)}
+.i-head span:last-child{margin-left:auto;color:var(--muted);text-transform:none;letter-spacing:0}
+.item h4{margin:0;font-size:13px;line-height:1.35}
+.item p{margin:0;font-size:10.5px;line-height:1.65;color:var(--lbl)}
+.item blockquote{font-size:10.5px;padding:7px 9px}
+.sticky{width:180px;min-height:112px;padding:10px 11px 12px;background:color-mix(in srgb, var(--c) 16%, #0b1220);border:1px solid color-mix(in srgb, var(--c) 40%, transparent);display:flex;flex-direction:column;gap:6px}
+.sticky.ai{border-style:dashed;border-color:var(--accent);background:rgba(139,226,234,.07)}
+.sticky .i-text,.textitem .i-text{font-size:11px;line-height:1.55;outline:none;cursor:text;min-height:1.5em;white-space:pre-wrap;word-break:break-word;user-select:text}
+.sticky .i-text:focus,.textitem .i-text:focus{box-shadow:0 1px 0 var(--accent)}
+.textitem{width:240px;padding:4px 2px}
+.textitem .i-text{font-size:15px;font-weight:700}
+.fileitem{width:250px;padding:11px 12px;background:#0d1524;border:1px solid var(--line);display:flex;flex-direction:column;gap:7px}
+.fileitem pre{margin:0;max-height:160px;overflow:hidden;font-size:9.5px;line-height:1.55;color:var(--lbl);white-space:pre-wrap;word-break:break-word;font-family:var(--code)}
+.fileitem img{width:100%;border-radius:3px;display:block;pointer-events:none}
+.ws-hint{position:absolute;left:max(16px, env(safe-area-inset-left,0px));bottom:calc(env(safe-area-inset-bottom,0px) + 14px);z-index:2;font-size:10px;color:var(--muted);padding:7px 10px;pointer-events:none}
+.ws-zoom{position:absolute;right:max(16px, env(safe-area-inset-right,0px));bottom:calc(env(safe-area-inset-bottom,0px) + 14px);z-index:2;display:flex;flex-direction:column;overflow:hidden}
+.ws-zoom button{background:none;border:0;width:34px;height:34px;cursor:pointer;display:grid;place-items:center;font-size:14px}
+.ws-zoom button + button{border-top:1px solid var(--line)}
+.ws-zoom button:hover{background:var(--surface-2)}
+.ws-status{font-size:10px;color:var(--accent);display:flex;align-items:center;gap:7px}
+body.ws-open .bar,body.ws-open .replay,body.ws-open .zoombox,body.ws-open .zoomlvl,body.ws-open .tray,body.ws-open .panel,body.ws-open .shelf{display:none}
+
+/* ---- node types ---- */
+.node.suggestion .lbl{fill:var(--accent);font-style:italic}
+.zoomlvl{gap:7px;max-width:330px}
+.tchips{display:flex;flex-wrap:wrap;gap:4px}
+.tchip{background:var(--surface-2);border:1px solid transparent;border-radius:3px;padding:4px 7px 4px 6px;font-size:10px;color:var(--fg);cursor:pointer;display:flex;align-items:center;gap:5px}
+.tchip span{color:var(--muted);font-variant-numeric:tabular-nums}
+.tchip[aria-pressed="false"]{background:none;border-color:var(--line);color:var(--muted)}
+.tchip[aria-pressed="false"] svg{opacity:.35}
+.tchip:focus-visible{outline:1px solid var(--accent)}
+.lsize{font-size:9.5px;color:var(--muted)}
+/* size + mix visualisation (cards and panel) */
+.c-viz{display:flex;flex-direction:column;gap:3px;margin-top:3px;padding-top:5px;border-top:1px solid color-mix(in srgb, var(--c) 25%, transparent)}
+.c-viz small{font-size:5.1px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;display:flex;justify-content:space-between}
+.c-mix,.mix{display:flex;gap:1px;overflow:hidden;background:var(--surface-2)}
+.c-mix{height:3.5px;border-radius:2px}
+.mix{height:6px;border-radius:3px;gap:2px}
+.c-mix i,.mix i{display:block;height:100%;min-width:2px}
+.mx-idea{background:var(--c)}
+.mx-question{background:#0a111d;box-shadow:inset 0 0 0 1px var(--c)}
+.mx-task{background:color-mix(in srgb, var(--c) 42%, transparent)}
+.mx-ref{background:#5d6478}
+.mx-suggestion{background:repeating-linear-gradient(90deg, var(--accent) 0 2px, transparent 2px 4px)}
+.c-bar{display:grid;grid-template-columns:auto 58px 1fr;gap:4px;align-items:center;font-size:5.4px;color:var(--lbl)}
+.c-bar span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.c-bar b,.meter{display:block;background:var(--surface-2);overflow:hidden}
+.c-bar b{height:3px;border-radius:1.5px}
+.c-bar b i,.meter i{display:block;height:100%;background:var(--c);box-shadow:0 0 4px var(--c)}
+.brow{display:grid;grid-template-columns:auto 1fr 56px;gap:9px;align-items:center}
+.meter{height:4px;border-radius:2px}
+.mixkey{display:flex;flex-wrap:wrap;gap:4px 10px;font-size:9.5px;color:var(--muted)}
+.mixkey span{display:inline-flex;align-items:center;gap:4px}
+
+/* ---- workspace doorways on the map ---- */
+.wsq{fill:var(--bg);stroke:var(--accent);stroke-width:1.1;vector-effect:non-scaling-stroke;cursor:pointer;filter:drop-shadow(0 0 3px rgba(139,226,234,.7))}
+.wsq:hover{fill:var(--accent)}
+.wsmore,.wsbranch{fill:var(--accent);font-family:var(--code);pointer-events:none}
+.wsbranch{opacity:.8}
+body[data-zoom="near"] .wsg{display:none}
+.c-ws{display:flex;flex-direction:column;gap:3px;margin-top:2px;padding-top:5px;border-top:1px dashed color-mix(in srgb, var(--c) 40%, transparent)}
+.c-ws small{font-size:5.2px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
+.c-ws button{all:unset;cursor:pointer;font-size:6.2px;color:var(--accent);display:flex;align-items:center;gap:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.c-ws button::before{content:'';width:5px;height:5px;border:1px solid var(--accent);border-radius:1px;flex:none}
+.c-ws button:hover{text-decoration:underline}
+.wsico{width:10px;height:10px;border:1.2px solid var(--accent);border-radius:2px;flex:none;box-shadow:0 0 6px rgba(139,226,234,.5)}
+.row small{display:block;color:var(--muted);font-size:9.5px;margin-top:1px}
+#shelfCount{color:var(--accent)}
+
+/* ---- workspaces shelf ---- */
+.shelf{position:fixed;left:max(16px, env(safe-area-inset-left,0px));top:calc(env(safe-area-inset-top,0px) + 74px);bottom:calc(env(safe-area-inset-bottom,0px) + 16px);width:290px;z-index:7;
+  overflow-y:auto;padding:14px 14px 18px;display:flex;flex-direction:column;gap:12px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+body.shelf-open .zoomlvl{display:none}
+.shelf h2{margin:0;font-size:13px;font-weight:700}
+.shelf h3{margin:6px 0 0;font-size:10px;font-weight:400;color:var(--muted)}
+.shelf h3::before{content:'// ';color:var(--accent)}
+.shelf .empty{margin:0;font-size:10.5px;line-height:1.65;color:var(--muted)}
+.wscard{display:flex;flex-direction:column;gap:7px;padding:10px 10px 9px;border:1px solid var(--line);border-radius:4px;background:rgba(20,32,51,.5)}
+.wscard:hover{border-color:color-mix(in srgb, var(--accent) 60%, transparent)}
+.wscard .wsopen{all:unset;cursor:pointer;display:flex;flex-direction:column;gap:6px;min-width:0}
+.wscard .wsopen:focus-visible{outline:1px solid var(--accent);outline-offset:4px}
+.wscard b{font-size:11.5px;display:flex;align-items:center;gap:8px;min-width:0}
+.wscard b span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chips{display:flex;flex-wrap:wrap;gap:4px}
+.chip{display:inline-flex;align-items:center;gap:5px;background:var(--surface-2);border-radius:3px;padding:2px 6px;font-size:9.5px;color:var(--lbl);max-width:100%}
+.chip span:last-child{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wsmeta{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:9.5px;color:var(--muted)}
+.del{background:none;border:0;padding:3px 4px;font-size:9.5px;color:var(--muted);cursor:pointer;border-radius:3px}
+.del:hover{color:var(--warn)}
+.del[data-confirm]{color:var(--warn);text-decoration:underline}
+.del:focus-visible{outline:1px solid var(--accent)}
+#wsTitle{outline:none;border-bottom:1px dashed transparent;cursor:text;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:46vw}
+#wsTitle:hover{border-bottom-color:var(--line)}
+#wsTitle:focus{border-bottom-color:var(--accent)}
+@media (max-width:760px){
+  .shelf{top:auto;left:0;right:0;bottom:0;width:auto;max-height:60vh;border-radius:12px 12px 0 0;
+    padding-left:max(16px, env(safe-area-inset-left,0px));padding-right:max(16px, env(safe-area-inset-right,0px));padding-bottom:calc(env(safe-area-inset-bottom,0px) + 20px)}
+  body.shelf-open .replay,body.shelf-open .zoombox,body.shelf-open .tray{display:none}
+}
+
+@media (max-width:760px){
+  .brand p,.zoomlvl{display:none}
+  .replay{width:calc(100vw - 32px);left:max(16px, env(safe-area-inset-left,0px));transform:none;bottom:calc(env(safe-area-inset-bottom,0px) + 62px)}
+  .tray{bottom:calc(env(safe-area-inset-bottom,0px) + 158px)}
+  body.panel-open .replay,body.panel-open .tray{transform:none}
+  .zoombox{flex-direction:row}
+  .zoombox button + button{border-top:0;border-left:1px solid var(--line)}
+  .panel{top:auto;left:0;right:0;bottom:0;width:auto;max-height:60vh;border-radius:12px 12px 0 0;
+    padding-left:max(16px, env(safe-area-inset-left,0px));padding-right:max(16px, env(safe-area-inset-right,0px));padding-bottom:calc(env(safe-area-inset-bottom,0px) + 20px)}
+  body.panel-open .replay,body.panel-open .zoombox,body.panel-open .tray{display:none}
+  .ws-hint{display:none}
+}
+@media (prefers-reduced-motion: reduce){ *{animation:none!important;transition:none!important} }
+</style>
+
+<svg id="map" aria-label="Map of the conversation. The main thread runs from start to end; tangents branch off each theme."></svg>
+
+<div class="bar">
+  <div class="brand glass"><div class="mark" aria-hidden="true"></div><div style="min-width:0"><h1>neura<span>.</span></h1><p id="status">hackathon brainstorm</p></div></div>
+  <div class="seg glass" role="group" aria-label="Layout">
+    <button type="button" id="mTimeline" aria-pressed="true">timeline</button>
+    <button type="button" id="mMind" aria-pressed="false">mind map</button>
+  </div>
+  <div class="tools glass">
+    <button type="button" class="tbtn" id="shelfBtn" aria-pressed="false" aria-controls="shelf">workspaces <span id="shelfCount"></span></button>
+    <button type="button" class="tbtn" id="selBtn" aria-pressed="false">select</button>
+    <button type="button" class="tbtn" id="pathBtn" aria-pressed="true">path</button>
+    <button type="button" class="tbtn" id="tidyBtn">tidy</button>
+    <button type="button" class="tbtn hot" id="importBtn">+ transcripts</button>
+  </div>
+</div>
+
+<div class="zoomlvl glass"><span aria-live="polite">view: <b id="lvlName">nodes</b> · <span id="lvlHint">zoom in for summaries</span></span>
+  <div class="tchips" id="tchips" role="group" aria-label="Show node types"></div>
+  <span class="lsize">dot size · how much sits under each node</span></div>
+
+<div class="tray glass" id="tray" hidden>
+  <span class="dots" id="trayDots"></span><span id="trayText">0 selected</span>
+  <button type="button" class="go" id="trayGo">enter workspace →</button>
+  <button type="button" class="ghost" id="trayClear">clear</button>
+</div>
+
+<div class="replay glass">
+  <button type="button" class="play" id="play" aria-label="Replay the conversation"><svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path id="playIcon" d="M7 4l13 8-13 8z" fill="currentColor"/></svg></button>
+  <input type="range" id="scrub" min="0" max="1" value="1" aria-label="Position in conversation">
+  <span class="count" id="count"></span>
+  <div class="ticker" id="ticker"></div>
+</div>
+
+<div class="zoombox glass">
+  <button type="button" id="zin" aria-label="Zoom in">+</button>
+  <button type="button" id="zout" aria-label="Zoom out">−</button>
+  <button type="button" id="zfit" aria-label="Fit map in view"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+</div>
+
+<aside class="panel glass" id="panel" hidden></aside>
+<aside class="shelf glass" id="shelf" hidden aria-label="Workspaces"></aside>
+
+<div class="dropzone" id="dropzone" hidden><div><b id="dzTitle">drop transcripts to restructure the map</b><span id="dzSub">.txt · .md · .vtt · .srt · neura .json</span></div></div>
+<div class="backdrop" id="backdrop" hidden></div>
+<section class="sheet glass" id="sheet" hidden role="dialog" aria-modal="true" aria-labelledby="sheetTitle"></section>
+<input type="file" id="mapFiles" multiple accept=".txt,.md,.markdown,.vtt,.srt,.json,text/plain" hidden>
+<div class="toast glass" id="toast" hidden></div>
+
+<!-- workspace -->
+<div class="ws" id="ws" hidden>
+  <div class="ws-bar">
+    <button type="button" class="ghost" id="wsBack">← map</button>
+    <div class="ws-title"><b id="wsTitle" contenteditable="plaintext-only" spellcheck="false" role="textbox" aria-label="Workspace name">workspace</b><span id="wsFrom"></span></div>
+    <div class="ws-tools glass">
+      <button type="button" class="tbtn" id="wsSticky">+ sticky</button>
+      <button type="button" class="tbtn" id="wsText">+ text</button>
+      <button type="button" class="tbtn" id="wsFile">+ file</button>
+      <button type="button" class="tbtn hot" id="wsAI" hidden>✦ next steps</button>
+    </div>
+    <span class="ws-status" id="wsStatus"></span>
+  </div>
+  <div class="board" id="board">
+    <div class="world" id="world"><svg class="wlinks" id="wlinks" width="1" height="1"></svg></div>
+  </div>
+  <div class="ws-hint glass">double-click the board for a sticky · drop files anywhere · delete removes the selected item</div>
+  <div class="ws-zoom glass">
+    <button type="button" id="wzin" aria-label="Zoom in">+</button>
+    <button type="button" id="wzout" aria-label="Zoom out">−</button>
+    <button type="button" id="wzfit" aria-label="Fit board in view"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+  </div>
+  <input type="file" id="wsFiles" multiple hidden>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<script>
+(function(){
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const store = {
+  get(k){ try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; } catch (e) { return null; } },
+  set(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } },
+  del(k){ try { localStorage.removeItem(k); } catch (e) {} }
+};
+function toast(msg){ const t = $('toast'); t.textContent = msg; t.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => t.hidden = true, 3200); }
+
+// Claude in the page (viewer's own account); null where unavailable
+let sample = null;
+try { window.claude?.use?.('sample').then(s => { sample = s; $('wsAI').hidden = !s; }).catch(() => {}); } catch (e) {}
+
+// ---------- sample session (from the team's transcript) ----------
+const SAMPLE = {id:'sample', title:'hackathon brainstorm', cross:[['offload','comparisons'],['mindupload','altered'],['dia','nextsteps'],['speech','chunk'],['context','workingmemory'],['distributed','offload']],
+data:{"root":{"label":"Hackathon idea exploration","kind":"Conversation","detail":"A nonlinear brainstorm that moves from AI and games to digital identity, then returns to the concept of a conversation-driven neural idea map.","children":["innovation","identity","product","workflow","build"],"quote":"How can it be innovative ... in a space where nothing is new?"},"innovation":{"label":"AI & new possibilities","kind":"Theme","detail":"The session begins with examples of AI making previously difficult things possible, including game-playing agents, game recreation and software security.","children":["gamebots","remix","security"],"quote":"He created an AI ... that optimizes bot in games."},"identity":{"label":"Digital sense of self","kind":"Theme","detail":"A major tangent explores distributed identity, digital memories, uploaded minds, and how a digital presence affects who we think we are.","children":["distributed","mindupload","offload","altered"],"quote":"A lot of our ... self is tied to the digital world."},"product":{"label":"Neural ideation map","kind":"Main concept","detail":"The team returns to designing an ambient AI that turns nonlinear conversation into an expandable, contextual neural network of ideas.","children":["speech","cluster","context","visuals"],"quote":"It’s basically like a 3D neural network map ... able to go off to tangents."},"workflow":{"label":"From thought to action","kind":"Theme","detail":"The group wants the map to turn brainstorming into useful next steps, integrations, and AI support that pushes work forward.","children":["nextsteps","dia","delegation"],"quote":"So many ideas, but they don’t know tangible next steps."},"build":{"label":"Build & research","kind":"Theme","detail":"Later discussion centers on technical scope, transcript chunking, conversational cues, competitor research, and hackathon time constraints.","children":["chunk","comparisons","prototype"],"quote":"How do we chunk them?"},"gamebots":{"label":"Game-playing AI","kind":"Example","detail":"An example from another hackathon: an AI that improves bot performance across games. Exact technical details are uncertain in the transcript.","children":["transfer"],"quote":"You attach it to any game ... and it makes the bot play better."},"remix":{"label":"Game remixing","kind":"Tangent","detail":"Discussion of Minecraft and transferring characters or elements from other games.","children":["minecraft"],"quote":"Putting those characters into Minecraft."},"security":{"label":"AI & software security","kind":"Question","detail":"The speakers connect AI recreation capabilities with risks to software and authentication.","children":["software"],"quote":"So software isn’t locked down."},"distributed":{"label":"Distributed identity","kind":"Idea","detail":"A person’s creative, professional and personal identities are represented across different digital services.","children":["platforms"],"quote":"Your creative thoughts live in Adobe ... professional self ..."},"mindupload":{"label":"Uploaded consciousness","kind":"Reference","detail":"A TV-show tangent imagines an uploaded mind in a virtual world and asks whether the copy is really the person.","children":["authenticity"],"quote":"Instead of dying ... upload your brain to ... this VR world."},"offload":{"label":"Externalized memories","kind":"Connection","detail":"The discussion shifts to photos, journals, social platforms and Obsidian as extensions of human memory.","children":["obsidian"],"quote":"Even Obsidian is literally a mind map that people are offloading."},"altered":{"label":"Altered digital presence","kind":"What if?","detail":"A speculative scenario: what if your digital history contradicted your own memories?","children":["trust"],"quote":"Imagine if one day ... your digital presence was altered."},"speech":{"label":"Speech becomes structure","kind":"Interaction","detail":"Recognize phrases signaling branch, return and association; keep developing thoughts attached to the right idea.","children":["cues","revision"],"quote":"What will cause something to branch off or cluster together?"},"cluster":{"label":"Expandable idea clouds","kind":"Interaction","detail":"Keep top-level ideas visible while tangents can be unfolded individually; avoid displaying every sentence.","children":["quiet","spatial"],"quote":"Keep the top node ... apparent."},"context":{"label":"Contextual AI at each node","kind":"Interaction","detail":"Users can expand a node and ask AI about it without repeating the full brainstorming context.","children":["nodeprompt","workingmemory"],"quote":"Expand upon a node ... actually prompt AI through that and have it have context."},"visuals":{"label":"More than text nodes","kind":"Principle","detail":"The team explicitly wants nodes to show different media or visual references rather than only text.","children":["references"],"quote":"The nodes don’t all need to be text."},"nextsteps":{"label":"Actionable next steps","kind":"Outcome","detail":"AI turns promising branches into smaller, concrete things the team can do next.","children":["tasks"],"quote":"Smaller next-step things you can do to build out some of the ideas."},"dia":{"label":"Dia proactive brief","kind":"Product reference","detail":"A participant describes a browser assistant using connected schedules and messages to recommend what to do next.","children":["proactive","privacy"],"quote":"They tell you how to push your work forward."},"delegation":{"label":"Team task coordination","kind":"Outcome","detail":"The group talks about dividing research, prototyping, and presentation work between teammates.","children":["owners"],"quote":"We should assign ... each person’s doing ... different things."},"chunk":{"label":"Transcript chunking","kind":"Technical question","detail":"How to detect topic shifts without spawning nodes too early, and how to revise a thought after the speaker backtracks.","children":["delay","whisper"],"quote":"It would probably have to build it out after that tangent has completed."},"comparisons":{"label":"Obsidian, Craft & Notion","kind":"Competitor research","detail":"Participants like interconnected notes but find tagging and manually organizing Obsidian too demanding; Craft feels simpler to one participant.","children":["tagging","craft"],"quote":"I don’t want to write and tag it."},"prototype":{"label":"One-day prototype scope","kind":"Task","detail":"The team discusses Figma mockups, an early cutoff for ideation and time for building, presentation and explanation video.","children":["figma","demo"],"quote":"After that we need to start actually making it."},"transfer":{"label":"Cross-game transfer","kind":"Supporting detail","detail":"Could learning from one game carry into another?","children":[],"quote":""},"minecraft":{"label":"Minecraft reference","kind":"Supporting detail","detail":"Games and characters crossing between worlds.","children":[],"quote":""},"software":{"label":"Security implications","kind":"Supporting detail","detail":"AI reduces effort to reproduce digital experiences.","children":[],"quote":""},"platforms":{"label":"Identity across services","kind":"Supporting detail","detail":"Creative life, work identity and personal notes live in separate places.","children":[],"quote":""},"authenticity":{"label":"Is the copy still you?","kind":"Supporting detail","detail":"Uploaded minds, bodies and personal continuity.","children":[],"quote":""},"obsidian":{"label":"Obsidian as external memory","kind":"Supporting detail","detail":"Linked notes are part of what people remember.","children":[],"quote":""},"trust":{"label":"Who controls your history?","kind":"Supporting detail","detail":"A digital record could conflict with personal memory.","children":[],"quote":""},"cues":{"label":"Conversational signals","kind":"Supporting detail","detail":"What if / going back / that’s like.","children":[],"quote":""},"revision":{"label":"Backtracking","kind":"Supporting detail","detail":"Handle never mind and unfinished thoughts.","children":[],"quote":""},"quiet":{"label":"Progressive disclosure","kind":"Supporting detail","detail":"Expand one cluster at a time.","children":[],"quote":""},"spatial":{"label":"3D neural structure","kind":"Supporting detail","detail":"Show branches and connections without clutter.","children":[],"quote":""},"nodeprompt":{"label":"Ask within a node","kind":"Supporting detail","detail":"No need to restate its context.","children":[],"quote":""},"workingmemory":{"label":"Persistent context","kind":"Supporting detail","detail":"Keep conversation history attached.","children":[],"quote":""},"references":{"label":"Visual references","kind":"Supporting detail","detail":"Images and products as node content.","children":[],"quote":""},"tasks":{"label":"Small concrete tasks","kind":"Supporting detail","detail":"Ideas become research, tests and prototypes.","children":[],"quote":""},"proactive":{"label":"Push work forward","kind":"Supporting detail","detail":"Suggest next steps using context.","children":[],"quote":""},"privacy":{"label":"Connected-data boundaries","kind":"Supporting detail","detail":"The participants note that powerful context can feel scary.","children":[],"quote":""},"owners":{"label":"Work split by person","kind":"Supporting detail","detail":"Avoid duplicated work.","children":[],"quote":""},"delay":{"label":"Wait for a tangent","kind":"Supporting detail","detail":"Build a node after enough context exists.","children":[],"quote":""},"whisper":{"label":"Adaptive transcription","kind":"Supporting detail","detail":"Explore revising speech-to-text after corrections.","children":[],"quote":""},"tagging":{"label":"Manual tagging friction","kind":"Supporting detail","detail":"Why recreate work after already discussing it?","children":[],"quote":""},"craft":{"label":"Simpler notes in Craft","kind":"Supporting detail","detail":"Contrast with more involved setup.","children":[],"quote":""},"figma":{"label":"Low-fi Figma demo","kind":"Supporting detail","detail":"Make the structure visible to teammates.","children":[],"quote":""},"demo":{"label":"Presentation + walkthrough","kind":"Supporting detail","detail":"Reserve time for demonstration.","children":[],"quote":""}}};
+const PALETTE = ['#8ebaff','#dbabff','#85e8d2','#ffbf90','#e7de8d','#ff9bb5','#9ff0a8'];
+const ROOTC = '#8be2ea';
+const R = [13, 10, 6.5, 4.2];
+
+// ---------- model ----------
+let MAP, nodes, byId, tree, cross, adj, THEMES, N, parentOf;
+function buildModel(map){
+  MAP = map;
+  const data = map.data;
+  parentOf = {};
+  Object.entries(data).forEach(([id, n]) => n.children.forEach(c => parentOf[c] = id));
+  THEMES = data.root.children.slice();
+  const color = {root: ROOTC}; THEMES.forEach((t, i) => color[t] = PALETTE[i % PALETTE.length]);
+  const order = [], depth = {}, theme = {};
+  (function walk(id, d, th){ order.push(id); depth[id] = d; theme[id] = th; data[id].children.forEach(c => walk(c, d + 1, d === 0 ? c : th)); })('root', 0, 'root');
+  N = order.length;
+  nodes = order.map((id, i) => {
+    const s = data[id], d = depth[id];
+    const type = s.ai ? 'suggestion' : d <= 1 ? 'hub' : kindType(String(s.kind || ''));
+    return {id, i, d, type, ai: !!s.ai, theme: theme[id], color: color[theme[id]], label: s.label, kind: s.ai ? 'AI suggestion' : s.kind, detail: s.detail, quote: s.quote, children: s.children};
+  });
+  const sub = id => data[id].children.reduce((a, c) => a + 1 + sub(c), 0);
+  nodes.forEach(n => {
+    n.desc = sub(n.id);
+    n.w = 1 + n.desc * 1.4 + (n.quote ? 1 : 0) + String(n.detail || '').length / 110;
+    n.r = n.type === 'suggestion' ? 5 : R[Math.min(n.d, 3)] * Math.min(1.6, .78 + Math.sqrt(n.w) * .16);
+  });
+  byId = new Map(nodes.map(n => [n.id, n]));
+  tree = nodes.filter(n => n.d > 0).map(n => ({source: byId.get(parentOf[n.id]), target: n}));
+  cross = (map.cross || []).filter(([a, b]) => byId.has(a) && byId.has(b) && a !== b).map(([a, b]) => ({source: byId.get(a), target: byId.get(b)}));
+  adj = new Map(nodes.map(n => [n.id, new Set()]));
+  tree.concat(cross).forEach(l => { adj.get(l.source.id).add(l.target.id); adj.get(l.target.id).add(l.source.id); });
+}
+
+function kindType(k){
+  if (/question|what if|\?/i.test(k)) return 'question';
+  if (/task|to-?do|action item/i.test(k)) return 'task';
+  if (/reference|competitor|tool/i.test(k)) return 'ref';
+  return 'idea';
+}
+const TYPES = [['idea','ideas'],['question','questions'],['task','to-dos'],['ref','references'],['suggestion','ai suggestions']];
+const shownTypes = new Set(TYPES.map(t => t[0]));
+function typeIcon(t, c, s = 10){
+  const r = s / 2 - 1.2;
+  const st = {hub: `fill="${c}"`, idea: `fill="${c}"`, question: `fill="none" stroke="${c}" stroke-width="1.4"`, task: `fill="${c}" fill-opacity=".42" stroke="${c}" stroke-opacity=".7"`,
+    ref: `fill="#5d6478"`, suggestion: `fill="none" stroke="#8be2ea" stroke-width="1.2" stroke-dasharray="2 2"`}[t];
+  return `<svg width="${s}" height="${s}" viewBox="0 0 ${s} ${s}" aria-hidden="true" style="flex:none"><circle cx="${s / 2}" cy="${s / 2}" r="${r}" ${st}/></svg>`;
+}
+function bodyStyle(n){
+  const c = n.color;
+  switch (n.type){
+    case 'question': return `fill:var(--bg);stroke:${c};stroke-width:1.6`;
+    case 'task': return `fill:${c};fill-opacity:.42;stroke:${c};stroke-opacity:.7;stroke-width:1`;
+    case 'ref': return `fill:#5d6478`;
+    case 'suggestion': return `fill:var(--bg);stroke:#8be2ea;stroke-width:1.4;stroke-dasharray:2 2`;
+    default: return `fill:${c}`;
+  }
+}
+function mixOf(n){
+  const m = {}; (function w(id){ byId.get(id).children.forEach(c => { const k = byId.get(c); m[k.type] = (m[k.type] || 0) + 1; w(c); }); })(n.id);
+  delete m.hub; return m;
+}
+function mixBar(m, cls){ return `<div class="${cls}">${TYPES.filter(([t]) => m[t]).map(([t, name]) => `<i class="mx-${t}" style="flex:${m[t]}" title="${m[t]} ${name}"></i>`).join('')}</div>`; }
+let mode = 'timeline', step = 0, K = 1, lvl = 'far', selected = null, hoverId = null, showPath = true, playing = false, timer = null, selectMode = false;
+const folded = new Set(), picked = new Set();
+
+function setTargets(){
+  const rt = byId.get('root'); rt.tx = 0; rt.ty = 0;
+  if (mode === 'timeline'){
+    THEMES.forEach((tid, i) => {
+      const t = byId.get(tid), dir = i % 2 ? 1 : -1;
+      t.tx = (i + 1) * 360; t.ty = dir * -22; t.dir = dir;
+      const kids = t.children, gap = Math.min(150, 620 / Math.max(1, kids.length));
+      kids.forEach((cid, j) => { const c = byId.get(cid), off = j - (kids.length - 1) / 2;
+        c.tx = t.tx + off * gap; c.ty = dir * (190 + Math.abs(off) * 22); c.dir = dir; placeDown(c, dir); });
+    });
+  } else {
+    THEMES.forEach((tid, i) => {
+      const t = byId.get(tid), a = -Math.PI / 2 + i * 2 * Math.PI / THEMES.length;
+      t.tx = Math.cos(a) * 280; t.ty = Math.sin(a) * 280; t.a = a; t.dir = 1;
+      placeRadial(t, a, 2 * Math.PI / THEMES.length * .85, 520);
+    });
+  }
+}
+function placeDown(p, dir){
+  const kids = p.children; if (!kids.length) return;
+  const gap = Math.max(60, 110 - p.d * 12);
+  kids.forEach((cid, k) => { const g = byId.get(cid), o = k - (kids.length - 1) / 2; g.tx = p.tx + o * gap; g.ty = p.ty + dir * 115; g.dir = dir; placeDown(g, dir); });
+}
+function placeRadial(p, a, span, rad){
+  const kids = p.children; if (!kids.length) return;
+  const step = Math.min(.42, span / Math.max(1, kids.length));
+  kids.forEach((cid, j) => { const c = byId.get(cid), ca = a + (j - (kids.length - 1) / 2) * step;
+    c.tx = Math.cos(ca) * rad; c.ty = Math.sin(ca) * rad; placeRadial(c, ca, step * 1.1, rad + 180); });
+}
+const shown = n => n.i <= step && !hiddenByFold(n) && (n.d <= 1 || shownTypes.has(n.type));
+function hiddenByFold(n){ let id = parentOf[n.id]; while (id){ if (folded.has(id)) return true; id = parentOf[id]; } return false; }
+
+// ---------- simulation ----------
+const collide = d3.forceCollide(), fx = d3.forceX(), fy = d3.forceY(), charge = d3.forceManyBody().distanceMax(220);
+const sim = d3.forceSimulation().force('x', fx).force('y', fy).force('collide', collide).force('charge', charge).stop();
+function refreshForces(){
+  fx.x(n => n.tx).strength(n => n.d <= 1 ? .9 : .32);
+  fy.y(n => n.ty).strength(n => n.d <= 1 ? .9 : .32);
+  collide.radius(n => !shown(n) ? 0 : lvl === 'near' ? 112 : n.r + 16).strength(.9);
+  charge.strength(n => shown(n) ? -30 : 0);
+}
+function reflow(a){ refreshForces(); if (RM){ for (let i = 0; i < 200; i++) sim.tick(); tick(); } else sim.alpha(a).restart(); }
+
+// ---------- svg ----------
+const svg = d3.select('#map');
+svg.append('defs').append('filter').attr('id','glow').attr('x','-200%').attr('y','-200%').attr('width','500%').attr('height','500%')
+  .html('<feGaussianBlur stdDeviation="2.8" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>');
+const gradDefs = svg.select('defs');
+const root = svg.append('g');
+const L = {neb: root.append('g'), ticks: root.append('g'), spine: root.append('path').attr('class','spine'), edges: root.append('g'), cross: root.append('g'),
+  path: root.append('path').attr('class','convpath'), nodes: root.append('g'), ring: root.append('circle').attr('class','ring').attr('r', 6)};
+let nebSel, edgeSel, crossSel, tickSel, nodeSel;
+
+function buildScene(){
+  gradDefs.selectAll('radialGradient').remove();
+  ['root', ...THEMES].forEach(t => {
+    const c = t === 'root' ? ROOTC : byId.get(t).color;
+    gradDefs.append('radialGradient').attr('id', 'neb-' + t)
+      .html(`<stop offset="0" style="stop-color:${c};stop-opacity:.26"/><stop offset=".5" style="stop-color:${c};stop-opacity:.09"/><stop offset="1" style="stop-color:${c};stop-opacity:0"/>`);
+  });
+  Object.values(L).forEach(g => { if (g.node().tagName === 'g') g.selectAll('*').remove(); });
+  nebSel = L.neb.selectAll('circle').data(nodes.filter(n => n.d <= 2)).join('circle').attr('class','neb')
+    .attr('r', n => n.d === 0 ? 120 : n.d === 1 ? 170 : 90).attr('fill', n => `url(#neb-${n.theme})`);
+  edgeSel = L.edges.selectAll('path').data(tree).join('path').attr('class','edge')
+    .attr('stroke', l => l.target.color).attr('stroke-width', l => l.target.d === 1 ? 2 : 1.2).attr('stroke-opacity', l => l.target.d === 1 ? .55 : .42);
+  crossSel = L.cross.selectAll('path').data(cross).join('path').attr('class','cross');
+  tickSel = L.ticks.selectAll('text').data(['root', ...THEMES]).join('text').attr('class','tick').attr('text-anchor','middle')
+    .text((t, i) => i === 0 ? 'START' : i === THEMES.length ? 'LATER IN SESSION' : `0${i} · CONVERSATION`);
+  nodeSel = L.nodes.selectAll('g').data(nodes, n => n.id).join(enter => {
+    const g = enter.append('g').attr('class', n => 'node d' + Math.min(n.d, 3) + ' ' + n.type);
+    g.append('circle').attr('class','pickring').attr('r', n => n.r + 7);
+    g.append('circle').attr('class','body').attr('r', n => n.r).attr('filter', n => n.type === 'ref' ? null : 'url(#glow)').attr('style', bodyStyle);
+    g.append('circle').attr('class','core').attr('r', n => n.r * .4).attr('display', n => (n.type === 'hub' || n.type === 'idea') && n.d <= 2 ? null : 'none').attr('style','fill:#fff;fill-opacity:.82');
+    g.append('text').attr('class', n => 'lbl t' + Math.min(n.d, 3)).attr('text-anchor','middle').attr('dy', n => n.r + 11)
+      .attr('font-size', n => [10, 9.5, 8.2, 7.2][Math.min(n.d, 3)]).text(n => n.label);
+    g.append('g').attr('class','wsg');
+    const fo = g.append('foreignObject').attr('class','cardfo').attr('x', -84).attr('y', -18).attr('width', 168).attr('height', 200);
+    fo.append('xhtml:div').attr('class','card').attr('style', n => `--c:${n.color}`).html(cardHTML);
+    g.attr('tabindex', 0).attr('role','button').attr('aria-label', n => n.label);
+    g.on('click', (e, n) => {
+       e.stopPropagation();
+       const door = e.target.closest('[data-ws]'); if (door) return openWsKey(door.getAttribute('data-ws'));
+       if (selectMode || e.shiftKey || e.metaKey || e.ctrlKey) togglePick(n); else select(n, true); })
+     .on('dblclick', (e, n) => { e.stopPropagation(); openWorkspace(picked.has(n.id) && picked.size > 1 ? [...picked] : [n.id]); })
+     .on('keydown', (e, n) => { if (e.key === 'Enter'){ e.preventDefault(); e.shiftKey ? togglePick(n) : select(n, true); } })
+     .on('mouseenter', (e, n) => { hoverId = n.id; paint(); })
+     .on('mouseleave', () => { hoverId = null; paint(); })
+     .call(d3.drag().on('start', dStart).on('drag', dMove).on('end', dEnd));
+    return g;
+  });
+  sim.nodes(nodes);
+  $('scrub').max = N - 1;
+}
+
+const curve = d3.line().curve(d3.curveCatmullRom.alpha(.5));
+function tick(){
+  if (!nodeSel) return;
+  nodeSel.attr('transform', n => `translate(${n.x},${n.y})`);
+  nebSel.attr('cx', n => n.x).attr('cy', n => n.y);
+  edgeSel.attr('d', l => { const s = l.source, t = l.target, mx = (s.x + t.x) / 2, my = (s.y + t.y) / 2;
+    return mode === 'timeline' ? `M${s.x},${s.y} C${s.x},${my} ${t.x},${my} ${t.x},${t.y}` : `M${s.x},${s.y} Q${mx * 1.04},${my * 1.04} ${t.x},${t.y}`; });
+  crossSel.attr('d', l => { const a = l.source, b = l.target; return `M${a.x},${a.y} Q${(a.x + b.x) / 2},${(a.y + b.y) / 2 - 70} ${b.x},${b.y}`; });
+  const sp = ['root', ...THEMES].map(id => byId.get(id)).filter(shown).map(n => [n.x, n.y]);
+  L.spine.attr('d', sp.length > 1 ? curve(sp) : null);
+  const pp = nodes.filter(shown).map(n => [n.x, n.y]);
+  L.path.attr('d', pp.length > 1 ? curve(pp) : null);
+  tickSel.attr('x', id => byId.get(id).x).attr('y', id => byId.get(id).y + (byId.get(id).dir === 1 ? -24 : 34));
+  const cur = nodes[step]; L.ring.attr('cx', cur.x).attr('cy', cur.y);
+}
+sim.on('tick', tick);
+
+function cardHTML(n){
+  const direct = wsIdx.get(n.id) || [], branch = branchWs(n);
+  const kids = n.children.map(id => byId.get(id));
+  let viz = '';
+  if (kids.length){
+    const top = kids.slice().sort((a, b) => b.w - a.w).slice(0, 4), mw = top[0].w;
+    viz = `<div class="c-viz"><small><span>inside · ${n.desc}</span><span>by size</span></small>${mixBar(mixOf(n), 'c-mix')}
+      ${top.map(k => `<div class="c-bar">${typeIcon(k.type, k.color, 6)}<span>${esc(k.label)}</span><b><i style="width:${Math.max(6, Math.round(k.w / mw * 100))}%"></i></b></div>`).join('')}
+      ${kids.length > 4 ? `<small><span>+${kids.length - 4} more</span><span></span></small>` : ''}</div>`;
+  }
+  return `<div class="c-head">${typeIcon(n.type, n.color, 7)}<span>${esc(n.kind)}</span><span>#${String(n.i + 1).padStart(2,'0')}</span></div>
+    <div class="c-title">${esc(n.label)}</div><div class="c-body">${esc(n.detail)}</div>
+    ${n.quote ? `<div class="c-quote">“${esc(n.quote)}”</div>` : ''}${viz}
+    ${direct.length || branch.length ? `<div class="c-ws">
+      ${direct.length ? `<small>workspaces</small>${direct.slice(0, 3).map(w => `<button type="button" data-ws="${esc(w.key)}">${esc(wsName(w))}</button>`).join('')}${direct.length > 3 ? `<small>+${direct.length - 3} more in the panel</small>` : ''}` : ''}
+      ${branch.length ? `<small>${branch.length} nested deeper in this branch</small>` : ''}</div>` : ''}`;
+}
+let wsHoverIds = null;
+function paint(){
+  const lit = wsHoverIds ? new Set(wsHoverIds) : hoverId && adj.has(hoverId) ? new Set([hoverId, ...adj.get(hoverId)]) : null;
+  nodeSel.attr('display', n => shown(n) && !(lvl === 'far' && n.d >= 3) ? null : 'none')
+    .classed('sel', n => !!selected && selected.id === n.id)
+    .classed('picked', n => picked.has(n.id))
+    .classed('lit', n => !!lit && lit.has(n.id))
+    .classed('fade', n => !!lit && !lit.has(n.id));
+  nebSel.attr('display', n => shown(n) ? null : 'none');
+  edgeSel.attr('display', l => shown(l.target) && !(lvl === 'far' && l.target.d >= 3) && !(mode === 'timeline' && l.target.d === 1) ? null : 'none')
+    .attr('opacity', l => lit && !(lit.has(l.source.id) && lit.has(l.target.id)) ? .2 : 1);
+  crossSel.attr('display', l => shown(l.source) && shown(l.target) && lvl !== 'far' ? null : 'none');
+  L.spine.attr('display', mode === 'timeline' ? null : 'none');
+  tickSel.attr('display', id => mode === 'timeline' && shown(byId.get(id)) && lvl !== 'near' ? null : 'none');
+  L.path.attr('display', showPath ? null : 'none');
+  L.ring.attr('display', playing || step < N - 1 ? null : 'none');
+}
+
+// ---------- zoom ----------
+const zoom = d3.zoom().scaleExtent([.15, 4]).on('zoom', e => {
+  root.attr('transform', e.transform); K = e.transform.k;
+  const next = K < .75 ? 'far' : K < 1.45 ? 'mid' : 'near';
+  if (next !== lvl){
+    const was = lvl === 'near'; lvl = next; document.body.dataset.zoom = lvl;
+    $('lvlName').textContent = lvl === 'near' ? 'summaries' : lvl === 'mid' ? 'nodes + details' : 'nodes';
+    $('lvlHint').textContent = lvl === 'near' ? 'zoom out for the overview' : 'zoom in for summaries';
+    if (was !== (lvl === 'near')) reflow(.4);
+    paint();
+  }
+  L.nodes.selectAll('.lbl.t0, .lbl.t1').attr('font-size', n => (n.d === 0 ? 11.5 : 10.5) / Math.min(K, 1.2));
+  tickSel.attr('font-size', 8 / Math.min(K, 1));
+});
+svg.call(zoom).on('dblclick.zoom', null);
+svg.on('click', () => { if (selected) closePanel(); });
+document.body.dataset.zoom = lvl;
+function viewport(){ const open = document.body.classList.contains('panel-open'), narrow = innerWidth <= 760; return {W: innerWidth - (open && !narrow ? 362 : 0), H: innerHeight - (open && narrow ? innerHeight * .6 : 0)}; }
+function fitTo(list, {maxK = .7, dur = 700} = {}){
+  if (!list.length) return;
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  list.forEach(n => { const x = n.tx ?? n.x, y = n.ty ?? n.y; x0 = Math.min(x0, x - 40); y0 = Math.min(y0, y - 40); x1 = Math.max(x1, x + 40); y1 = Math.max(y1, y + 50); });
+  const {W, H} = viewport(), top = 80, bottom = 120, side = 40;
+  const k = Math.max(.15, Math.min(maxK, (W - side * 2) / (x1 - x0), (H - top - bottom) / (y1 - y0)));
+  const t = d3.zoomIdentity.translate(W / 2 - k * (x0 + x1) / 2, top + (H - top - bottom) / 2 - k * (y0 + y1) / 2).scale(k);
+  (dur && !RM ? svg.transition().duration(dur) : svg).call(zoom.transform, t);
+}
+const fitAll = (dur) => fitTo(nodes.filter(shown).filter(n => n.d < 3), {dur});
+function centerOn(n, k){ const {W, H} = viewport(); (RM ? svg : svg.transition().duration(550)).call(zoom.transform, d3.zoomIdentity.translate(W / 2 - k * n.x, H / 2 - k * n.y).scale(k)); }
+$('zin').onclick = () => svg.transition().duration(RM ? 0 : 250).call(zoom.scaleBy, 1.45);
+$('zout').onclick = () => svg.transition().duration(RM ? 0 : 250).call(zoom.scaleBy, 1 / 1.45);
+$('zfit').onclick = () => fitAll();
+
+// ---------- drag ----------
+function dStart(e, n){ if (!e.active && !RM) sim.alphaTarget(.12).restart(); n.fx = n.x; n.fy = n.y; }
+function dMove(e, n){ n.fx = e.x; n.fy = e.y; if (RM){ n.x = e.x; n.y = e.y; tick(); } }
+function dEnd(e){ if (!e.active) sim.alphaTarget(0); }
+$('tidyBtn').onclick = () => { nodes.forEach(n => { n.fx = null; n.fy = null; }); reflow(.6); };
+
+// ---------- modes ----------
+function setMode(m){
+  mode = m; $('mTimeline').setAttribute('aria-pressed', m === 'timeline'); $('mMind').setAttribute('aria-pressed', m === 'mind');
+  nodes.forEach(n => { n.fx = null; n.fy = null; }); setTargets(); reflow(.9); paint(); fitAll();
+}
+$('mTimeline').onclick = () => setMode('timeline'); $('mMind').onclick = () => setMode('mind');
+$('pathBtn').onclick = () => { showPath = !showPath; $('pathBtn').setAttribute('aria-pressed', showPath); paint(); };
+$('selBtn').onclick = () => { selectMode = !selectMode; $('selBtn').setAttribute('aria-pressed', selectMode); toast(selectMode ? 'select mode: click nodes to add them to a workspace' : 'select mode off'); };
+
+// ---------- selection → workspace doorway ----------
+function togglePick(n){ picked.has(n.id) ? picked.delete(n.id) : picked.add(n.id); syncTray(); paint(); if (selected) renderPanel(selected); }
+function syncTray(){
+  $('tray').hidden = picked.size === 0;
+  $('trayText').textContent = `${picked.size} node${picked.size === 1 ? '' : 's'} selected`;
+  $('trayDots').innerHTML = [...picked].slice(0, 6).map(id => `<span class="dot" style="--c:${byId.get(id).color}"></span>`).join('');
+}
+$('trayGo').onclick = () => openWorkspace([...picked]);
+$('trayClear').onclick = () => { picked.clear(); syncTray(); paint(); if (selected) renderPanel(selected); };
+
+// ---------- replay ----------
+function setStep(s, born){
+  const prev = step; step = Math.max(0, Math.min(N - 1, s));
+  if (born && step > prev){
+    for (let i = prev + 1; i <= step; i++){
+      const n = nodes[i], p = byId.get(parentOf[n.id]);
+      if (p){ n.x = p.x + (Math.random() - .5) * 10; n.y = p.y + (Math.random() - .5) * 10; }
+      const g = nodeSel.filter(d => d === n).classed('born', false); g.node().getBBox(); g.classed('born', true);
+    }
+  }
+  $('scrub').value = step; $('count').textContent = `${step + 1} / ${N}`;
+  const n = nodes[step];
+  $('ticker').innerHTML = step === N - 1 && !playing
+    ? `${N} thoughts mapped · <b>play</b> to watch it build · drop transcripts to restructure`
+    : `<b>#${String(step + 1).padStart(2,'0')} ${esc(String(n.kind).toLowerCase())}</b> · ${esc(n.label)}${n.quote ? ` · “${esc(n.quote)}”` : ''}`;
+  reflow(.35); paint(); tick();
+}
+function play(){
+  if (playing) return stop();
+  playing = true; document.body.classList.add('playing');
+  $('playIcon').setAttribute('d', 'M6 4h4v16H6zM14 4h4v16h-4z'); $('play').setAttribute('aria-label', 'Pause replay');
+  $('status').innerHTML = '<span class="live">listening</span> · replay';
+  if (step >= N - 1){ nodes.forEach(n => { n.fx = null; n.fy = null; }); setStep(0); fitTo(nodes.filter(n => n.d < 3)); }
+  timer = setInterval(() => { if (step >= N - 1) return stop(); setStep(step + 1, true); }, RM ? 400 : 1100);
+}
+function stop(){
+  playing = false; clearInterval(timer); document.body.classList.remove('playing');
+  $('playIcon').setAttribute('d', 'M7 4l13 8-13 8z'); $('play').setAttribute('aria-label', 'Replay the conversation');
+  $('status').textContent = MAP.title; setStep(step);
+}
+$('play').onclick = play;
+$('scrub').addEventListener('input', () => { if (playing) stop(); const v = +$('scrub').value; setStep(v, v > step); });
+
+// ---------- panel ----------
+const panel = $('panel');
+function select(n, move){ selected = n; renderPanel(n); panel.hidden = false; document.body.classList.add('panel-open'); paint(); if (move) centerOn(n, Math.max(K, n.d <= 1 ? .95 : 1.6)); }
+function closePanel(){ selected = null; panel.hidden = true; document.body.classList.remove('panel-open'); paint(); }
+function renderPanel(n){
+  const kids = n.children.map(id => byId.get(id)).filter(c => c.i <= step);
+  const links = cross.filter(l => l.source === n || l.target === n).map(l => l.source === n ? l.target : l.source);
+  const prev = nodes[n.i - 1], next = nodes[n.i + 1], par = parentOf[n.id] ? byId.get(parentOf[n.id]) : null;
+  const row = c => `<button class="row" type="button" data-go="${c.id}"><span class="dot" style="--c:${c.color}"></span><span>${esc(c.label)}</span></button>`;
+  const isPicked = picked.has(n.id);
+  const direct = wsIdx.get(n.id) || [], branch = branchWs(n);
+  const hasOwn = direct.some(w => w.ids.length === 1);
+  const wsRow = w => `<button class="row" type="button" data-wsopen="${esc(w.key)}"><span class="wsico" aria-hidden="true"></span><span>${esc(wsName(w))}<small>${wsMeta(w)}</small></span></button>`;
+  const head = `<div class="p-head"><span class="tag">${typeIcon(n.type, n.color, 9)}${esc(byId.get(n.theme)?.label || '')}</span>
+      <button class="close" type="button" data-close aria-label="Close details"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+    <h2>${esc(n.label)}</h2>`;
+  if (n.type === 'suggestion'){
+    panel.innerHTML = `${head}<p class="meta">ai suggestion · not discussed yet</p>
+      <section><h3>why it’s here</h3><p class="body-text">${esc(n.detail || 'A follow-up Claude suggested for this branch.')}</p></section>
+      <p class="body-text" style="color:var(--muted)">Suggested from <b style="color:var(--fg);font-weight:400">${esc(par ? par.label : '')}</b>. Talk about it to grow it, keep it on the map, or dismiss it.</p>
+      <div class="actions"><button class="go" type="button" data-keep>keep on map</button><button class="ghost" type="button" data-dismiss>dismiss</button></div>
+      ${par ? `<section><h3>branched from</h3><div class="rows">${row(par)}</div></section>` : ''}`;
+    return;
+  }
+  const typeLabel = {hub: n.d === 0 ? 'whole conversation' : 'theme', idea: 'idea', question: 'question', task: 'to-do', ref: 'reference'}[n.type];
+  const mw = kids.reduce((a, k) => Math.max(a, k.w), 1), mix = mixOf(n);
+  const kidRow = k => `<button class="row brow" type="button" data-go="${k.id}" style="--c:${k.color}">${typeIcon(k.type, k.color)}<span>${esc(k.label)}</span><span class="meter" aria-hidden="true"><i style="width:${Math.max(6, Math.round(k.w / mw * 100))}%"></i></span></button>`;
+  panel.innerHTML = `${head}
+    <p class="meta">${typeLabel} · ${esc(String(n.kind).toLowerCase())} · thought #${String(n.i + 1).padStart(2,'0')} of ${N}</p>
+    <div class="actions">
+      <button class="go" type="button" data-enter>${picked.size > 1 && isPicked ? `enter workspace (${picked.size}) →` : hasOwn ? 'open its workspace →' : 'new workspace →'}</button>
+      <button class="ghost" type="button" data-pick>${isPicked ? '− remove from selection' : '+ add to selection'}</button>
+    </div>
+    ${direct.length ? `<section><h3>workspaces in this node</h3><div class="rows">${direct.map(wsRow).join('')}</div></section>` : ''}
+    ${branch.length ? `<section><h3>nested deeper in this branch</h3><div class="rows">${branch.map(wsRow).join('')}</div></section>` : ''}
+    <section><h3>summary</h3><p class="body-text">${esc(n.detail)}</p></section>
+    ${n.quote ? `<section><h3>from transcript</h3><blockquote>“${esc(n.quote)}”</blockquote></section>` : ''}
+    ${par ? `<section><h3>branched from</h3><div class="rows">${row(par)}</div></section>` : ''}
+    ${kids.length ? `<section><h3>inside this node · by size</h3>
+      <div style="--c:${n.color}">${mixBar(mix, 'mix')}</div>
+      <div class="mixkey">${TYPES.filter(([t]) => mix[t]).map(([t, name]) => `<span>${typeIcon(t, n.color, 9)}${mix[t]} ${mix[t] === 1 ? name.replace(/s$/, '') : name}</span>`).join('')}</div>
+      <div class="rows">${kids.slice().sort((a, b) => b.w - a.w).map(kidRow).join('')}</div>
+      <button class="btn" type="button" data-fold>${folded.has(n.id) ? 'unfold this branch' : 'fold this branch'}</button></section>` : ''}
+    ${n.d > 0 ? `<section><h3>explore further</h3><p class="body-text" style="color:var(--muted)">AI suggestions show up as dashed nodes around this one. Keep the useful ones.</p>
+      <button class="btn" type="button" data-suggest>✦ suggest follow-ups</button></section>` : ''}
+    ${links.length ? `<section><h3>also connects to</h3><div class="rows">${links.map(row).join('')}</div></section>` : ''}
+    <section><h3>conversation path</h3><div class="navrow">
+      <button class="btn" type="button" data-go="${prev ? prev.id : ''}" ${prev ? '' : 'disabled'}><small>← before this</small><span>${prev ? esc(prev.label) : 'start'}</span></button>
+      <button class="btn" type="button" data-go="${next ? next.id : ''}" ${next && next.i <= step ? '' : 'disabled'}><small>after this →</small><span>${next ? esc(next.label) : 'end'}</span></button>
+    </div></section>
+    <p class="foot">${MAP.id === 'sample' ? 'Derived from the uploaded transcript · curated sample' : 'Structured by Claude from your files'}</p>`;
+}
+panel.addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b || !selected) return;
+  if (b.hasAttribute('data-close')) return closePanel();
+  if (b.dataset.wsopen) return openWsKey(b.dataset.wsopen);
+  if (b.hasAttribute('data-suggest')) return suggestFor(selected, b);
+  if (b.hasAttribute('data-keep')){ MAP.data[selected.id].ai = false; rebuild(); toast('kept on the map'); return; }
+  if (b.hasAttribute('data-dismiss')){
+    const id = selected.id, p = parentOf[id];
+    MAP.data[p].children = MAP.data[p].children.filter(c => c !== id); delete MAP.data[id];
+    selected = byId.get(p); rebuild(); return;
+  }
+  if (b.hasAttribute('data-pick')) return togglePick(selected);
+  if (b.hasAttribute('data-enter')) return openWorkspace(picked.has(selected.id) && picked.size > 1 ? [...picked] : [selected.id]);
+  if (b.hasAttribute('data-fold')){ folded.has(selected.id) ? folded.delete(selected.id) : folded.add(selected.id); reflow(.4); paint(); renderPanel(selected); return; }
+  if (b.dataset.go){ const n = byId.get(b.dataset.go); if (n){ if (hiddenByFold(n)){ folded.clear(); reflow(.4); } select(n, true); } }
+});
+
+// ---------- legend + type filters ----------
+function refreshLegend(){
+  const c = {}; nodes.forEach(n => { if (n.type !== 'hub') c[n.type] = (c[n.type] || 0) + 1; });
+  $('tchips').innerHTML = TYPES.map(([t, name]) => `<button type="button" class="tchip" data-type="${t}" aria-pressed="${shownTypes.has(t)}">${typeIcon(t, '#b4c3d6')}${name}<span>${c[t] || 0}</span></button>`).join('');
+}
+$('tchips').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  const t = b.dataset.type; shownTypes.has(t) ? shownTypes.delete(t) : shownTypes.add(t);
+  refreshLegend(); reflow(.3); paint(); tick();
+});
+
+// ---------- rebuild in place (after AI suggestions are added, kept or dismissed) ----------
+function rebuild(){
+  const pos = new Map(nodes.map(n => [n.id, {x: n.x, y: n.y, fx: n.fx, fy: n.fy}]));
+  const keep = selected?.id;
+  buildModel(MAP); setTargets();
+  nodes.forEach(n => {
+    const p = pos.get(n.id), pp = pos.get(parentOf[n.id]);
+    if (p){ n.x = p.x; n.y = p.y; n.fx = p.fx; n.fy = p.fy; }
+    else if (pp){ n.x = pp.x + (Math.random() - .5) * 16; n.y = pp.y + (Math.random() - .5) * 16; }
+    else { n.x = n.tx; n.y = n.ty; }
+  });
+  step = N - 1; indexWs(); buildScene(); refreshForces(); refreshWs(); refreshLegend();
+  selected = keep && byId.get(keep) || null;
+  svg.call(zoom.transform, d3.zoomTransform(svg.node()));
+  setStep(N - 1);
+  if (selected) renderPanel(selected); else closePanel();
+  store.set('neura-map', MAP);
+}
+async function suggestFor(n, btn){
+  let list = [];
+  if (sample){
+    btn.disabled = true; btn.textContent = '✦ thinking…';
+    const par = parentOf[n.id] ? byId.get(parentOf[n.id]) : null;
+    const kids = n.children.map(c => byId.get(c).label).join('; ') || 'none yet';
+    try {
+      const arr = await sample.json(`A team is mapping a brainstorm conversation. Suggest 3 follow-ups they have NOT discussed yet that would push this node forward.
+Node: ${n.label} (${n.kind}): ${n.detail}
+${par ? `It branched from: ${par.label}` : ''}
+Already under it: ${kids}
+Reply with ONLY a JSON array of 3 objects: {"label": string (at most 7 words), "kind": "Idea" or "Question", "detail": one plain sentence on why it matters}.`, {modelTier: 'quick', cache: false});
+      list = (Array.isArray(arr) ? arr : []).filter(x => x && x.label).slice(0, 3)
+        .map(x => ({label: String(x.label).slice(0, 70), kind: /question/i.test(x.kind) ? 'Question' : 'Idea', detail: String(x.detail || '').slice(0, 240)}));
+    } catch (e) {
+      toast(e?.code === 'not_granted' ? 'Claude access was declined for this page.' : e?.code === 'rate_limited' ? 'Too many requests. Try again in a minute.' : 'Couldn’t get suggestions. Try again.');
+      btn.disabled = false; btn.textContent = '✦ suggest follow-ups'; return;
+    }
+  } else {
+    list = [{label: 'What would a first version look like?', kind: 'Question', detail: 'A starting prompt for scoping this idea.'},
+            {label: 'What is the strongest objection?', kind: 'Question', detail: 'A starting prompt for pressure-testing this idea.'}];
+  }
+  if (!list.length){ btn.disabled = false; btn.textContent = '✦ suggest follow-ups'; return toast('No suggestions this time. Try again.'); }
+  list.forEach((s, i) => { const id = 'ai_' + Date.now().toString(36) + i; MAP.data[id] = {label: s.label, kind: s.kind, detail: s.detail, quote: '', children: [], ai: true}; MAP.data[n.id].children.push(id); });
+  folded.delete(n.id); shownTypes.add('suggestion');
+  rebuild(); toast(`${list.length} suggestions added around “${n.label}”`);
+}
+
+// ---------- load a map ----------
+function loadMap(map, {fresh} = {}){
+  if (playing){ playing = false; clearInterval(timer); document.body.classList.remove('playing'); $('playIcon').setAttribute('d', 'M7 4l13 8-13 8z'); }
+  picked.clear(); folded.clear(); selected = null; panel.hidden = true; document.body.classList.remove('panel-open');
+  buildModel(map); setTargets();
+  nodes.forEach(n => { n.x = n.tx + (Math.random() - .5) * 20; n.y = n.ty + (Math.random() - .5) * 20; });
+  step = N - 1; indexWs(); buildScene(); refreshForces(); refreshWs(); refreshLegend();
+  for (let i = 0; i < 200; i++) sim.tick();
+  $('status').textContent = map.title; syncTray();
+  setStep(N - 1); fitAll(fresh ? 0 : 700);
+}
+
+// ---------- drop transcripts → restructure ----------
+const TEXT_EXT = /\.(txt|md|markdown|vtt|srt|json)$/i;
+let dragDepth = 0, pendingFiles = [], runCtl = null;
+addEventListener('dragenter', e => { if (!e.dataTransfer?.types?.includes('Files')) return; e.preventDefault(); dragDepth++; showDrop(true); });
+addEventListener('dragover', e => { if (e.dataTransfer?.types?.includes('Files')) e.preventDefault(); });
+addEventListener('dragleave', () => { dragDepth = Math.max(0, dragDepth - 1); if (!dragDepth) showDrop(false); });
+addEventListener('drop', e => {
+  if (!e.dataTransfer?.files?.length) return; e.preventDefault(); dragDepth = 0; showDrop(false);
+  if (!$('ws').hidden) wsDropFiles([...e.dataTransfer.files], e.clientX, e.clientY);
+  else openImport([...e.dataTransfer.files]);
+});
+function showDrop(on){
+  const inWs = !$('ws').hidden;
+  $('dzTitle').textContent = inWs ? 'drop files onto this workspace' : 'drop transcripts to restructure the map';
+  $('dzSub').textContent = inWs ? 'text files show a preview · images show inline' : '.txt · .md · .vtt · .srt · neura .json';
+  $('dropzone').hidden = !on;
+}
+$('importBtn').onclick = () => openImport([]);
+$('mapFiles').onchange = e => { openImport(pendingFiles.concat([...e.target.files])); e.target.value = ''; };
+
+function openImport(files){
+  pendingFiles = files; $('backdrop').hidden = false; $('sheet').hidden = false; renderSheet();
+}
+function closeImport(){ if (runCtl){ runCtl.abort(); runCtl = null; } $('backdrop').hidden = true; $('sheet').hidden = true; pendingFiles = []; }
+$('backdrop').onclick = closeImport;
+function renderSheet(msg, busy){
+  const ok = pendingFiles.filter(f => TEXT_EXT.test(f.name));
+  const kb = b => b < 1024 ? b + ' B' : (b / 1024).toFixed(1) + ' KB';
+  $('sheet').innerHTML = `
+    <h2 id="sheetTitle">restructure the map</h2>
+    <p>Drop meeting transcripts, notes or a saved neura map. Claude reads them and rebuilds the map: themes in the order they came up, tangents branching off, and the through-line from start to end.</p>
+    ${pendingFiles.length ? `<div class="files">${pendingFiles.map(f => `<div class="file-row ${TEXT_EXT.test(f.name) ? '' : 'bad'}"><span>${esc(f.name)}</span><span>${TEXT_EXT.test(f.name) ? kb(f.size) : 'not a text file'}</span></div>`).join('')}</div>`
+      : `<p style="color:var(--muted)">No files yet. Drag them onto the map, or choose them below.</p>`}
+    <button class="ghost" type="button" data-pickfiles>choose files…</button>
+    <div class="opts" role="radiogroup" aria-label="How to use the files">
+      <label class="opt"><input type="radio" name="how" value="merge" checked><span>merge into the current map<small>keeps today's structure and folds the new material in</small></span></label>
+      <label class="opt"><input type="radio" name="how" value="new"><span>start a new map<small>build only from these files</small></span></label>
+    </div>
+    ${!sample ? `<p class="err">Restructuring uses Claude inside the page, which isn't available in this view. Open this page in claude.ai to use it. Saved neura .json maps still load here.</p>` : ''}
+    ${msg ? `<p class="${busy ? 'progress' : 'err'}">${busy ? '<span class="spin" aria-hidden="true"></span>' : ''}<span>${esc(msg)}</span></p>` : ''}
+    <div class="actions">
+      ${store.get('neura-map') ? `<button class="linkish" type="button" data-reset style="margin-right:auto">reset to the sample session</button>` : ''}
+      <button class="ghost" type="button" data-cancel>${busy ? 'stop' : 'cancel'}</button>
+      <button class="go" type="button" data-run ${ok.length && !busy ? '' : 'disabled'}>restructure →</button>
+    </div>`;
+}
+$('sheet').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.hasAttribute('data-pickfiles')) return $('mapFiles').click();
+  if (b.hasAttribute('data-cancel')) return closeImport();
+  if (b.hasAttribute('data-reset')){ store.del('neura-map'); loadMap(structuredClone(SAMPLE)); closeImport(); toast('back to the sample session'); return; }
+  if (b.hasAttribute('data-run')) runImport($('sheet').querySelector('input[name=how]:checked')?.value || 'merge');
+});
+
+async function runImport(how){
+  const files = pendingFiles.filter(f => TEXT_EXT.test(f.name));
+  const texts = await Promise.all(files.map(async f => ({name: f.name, text: await f.text()})));
+  // a saved neura map loads directly
+  for (const t of texts){ if (/\.json$/i.test(t.name)){ try { const j = JSON.parse(t.text); const m = toMap(j, t.name); if (texts.length === 1){ commitMap(m); return; } } catch (e) {} } }
+  if (!sample){ renderSheet('Claude isn’t available in this view, so only saved neura .json maps can load here.'); return; }
+  let body = texts.map(t => `=== ${t.name} ===\n${t.text}`).join('\n\n');
+  if (body.length > 140000) body = body.slice(0, 140000) + '\n[transcript cut for length]';
+  const current = how === 'merge' ? JSON.stringify(compactMap(MAP)) : '';
+  const prompt = `You turn brainstorm conversations into an idea map for an app called Neura.
+Reply with ONLY this JSON shape:
+{"title": string, "nodes": [{"id": string, "parent": string|null, "label": string, "kind": string, "detail": string, "quote": string}], "cross": [[string, string]]}
+Rules:
+- Exactly one node has parent null: the whole conversation, kind "Conversation".
+- Its children are 3 to 7 themes, listed in the order they first came up in the conversation.
+- Below each theme, ideas, questions, examples, references, tasks and tangents, at most 3 levels below the root.
+- 25 to 60 nodes in total. List nodes in the order they were said; a parent always comes before its children.
+- id: short unique snake_case. label: at most 6 words. kind: one of Theme, Main concept, Idea, Question, Example, Reference, Task, Outcome, Tangent, Supporting detail.
+- detail: one or two plain sentences on what was said. quote: a short exact excerpt from the transcript (under 15 words), or "".
+- cross: up to 8 pairs of node ids from different themes that the speakers connected.
+- title: a short lowercase name for the session.
+${how === 'merge' ? `Merge the new material into this existing map. Keep its useful structure and wording, add the new ideas where they belong, and keep everything in conversation order:\n${current}\n` : ''}
+Transcripts and notes:
+${body}`;
+  runCtl = new AbortController();
+  renderSheet(`reading ${texts.length} file${texts.length === 1 ? '' : 's'}… this usually takes under a minute`, true);
+  try {
+    let chars = 0;
+    const j = await sample.json(prompt, {signal: runCtl.signal, onText: ({text}) => { chars = text.length; const p = $('sheet').querySelector('.progress span:last-child'); if (p) p.textContent = `structuring the map… ${chars.toLocaleString()} characters written`; }});
+    runCtl = null;
+    commitMap(toMap(j, files.map(f => f.name).join(', ')));
+  } catch (e) {
+    runCtl = null;
+    const copy = {cancelled: 'Stopped.', not_granted: 'Claude access was declined for this page.', rate_limited: 'Too many requests right now. Try again in a minute.',
+      prompt_too_large: 'Those files are too long. Try fewer or shorter files.', invalid_json: 'Claude’s answer wasn’t a usable map. Try again.', refused: 'Claude declined to structure these files.',
+      session_expired: 'Sign in to claude.ai again, then retry.'}[e?.code] || (e?.message && !e.code ? e.message : 'Something went wrong. Try again.');
+    if (e?.code === 'cancelled') return;
+    renderSheet(copy);
+  }
+}
+function compactMap(m){
+  const out = []; (function w(id, p){ const n = m.data[id]; out.push({id, parent: p, label: n.label, kind: n.kind, detail: n.detail, quote: n.quote}); n.children.forEach(c => w(c, id)); })('root', null);
+  return {title: m.title, nodes: out, cross: m.cross || []};
+}
+function toMap(j, source){
+  if (j && j.data && j.data.root) return {id: 'm' + Date.now(), title: String(j.title || 'imported map'), data: j.data, cross: j.cross || []};
+  if (!j || !Array.isArray(j.nodes) || !j.nodes.length) throw new Error('That file doesn’t contain a neura map.');
+  const list = j.nodes.filter(n => n && n.id != null && n.label).slice(0, 90);
+  const seen = new Set();
+  list.forEach((n, i) => { let id = String(n.id).replace(/[^\w-]/g, '_').slice(0, 40) || 'n' + i; while (seen.has(id)) id += '_'; seen.add(id); n._id = id; n._p = n.parent == null ? null : String(n.parent).replace(/[^\w-]/g, '_').slice(0, 40); });
+  const rootSrc = list.find(n => n._p == null) || list[0];
+  const ren = id => id === rootSrc._id ? 'root' : (id === 'root' ? 'root_' : id);
+  const data = {};
+  list.forEach(n => data[ren(n._id)] = {label: String(n.label).slice(0, 70), kind: String(n.kind || 'Idea').slice(0, 30), detail: String(n.detail || '').slice(0, 500), quote: String(n.quote || '').slice(0, 200), children: []});
+  list.forEach(n => { if (n === rootSrc) return; const me = ren(n._id); let p = n._p == null ? 'root' : ren(n._p); if (!data[p] || p === me) p = 'root'; data[p].children.push(me); });
+  const reach = new Set();
+  const w = id => { reach.add(id); const keep = []; for (const c of data[id].children){ if (!reach.has(c)){ keep.push(c); w(c); } } data[id].children = keep; };
+  w('root');
+  Object.keys(data).forEach(id => { if (!reach.has(id)){ data.root.children.push(id); w(id); } });
+  if (!data.root.children.length) throw new Error('Claude’s map had no themes. Try again.');
+  const crossOut = (Array.isArray(j.cross) ? j.cross : []).map(p => Array.isArray(p) ? p.map(x => ren(String(x).replace(/[^\w-]/g, '_').slice(0, 40))) : null).filter(p => p && data[p[0]] && data[p[1]]).slice(0, 12);
+  return {id: 'm' + Date.now(), title: String(j.title || 'new session').slice(0, 60), data, cross: crossOut, source};
+}
+function commitMap(m){
+  store.set('neura-map', m); closeImport(); loadMap(m); toast(`map rebuilt · ${N} thoughts across ${THEMES.length} themes`);
+}
+
+// ======================= saved workspaces =======================
+let wsIdx = new Map(), wsAll = [];
+function allWorkspaces(){
+  const out = [];
+  try {
+    for (let i = 0; i < localStorage.length; i++){
+      const k = localStorage.key(i); if (!k || !k.startsWith('neura-ws:')) continue;
+      const v = store.get(k); if (!v) continue;
+      const parts = k.split(':'); const mapId = parts[1], ids = parts.slice(2).join(':').split(',').filter(Boolean);
+      out.push({key: k, mapId, ids, name: v.name || '', count: (v.items || []).length, updated: v.updated || 0, mapTitle: v.mapTitle || '', labels: v.labels || []});
+    }
+  } catch (e) {}
+  return out.sort((a, b) => b.updated - a.updated);
+}
+function indexWs(){
+  wsAll = allWorkspaces(); wsIdx = new Map();
+  wsAll.filter(w => w.mapId === MAP.id).forEach(w => w.ids.forEach(id => { if (byId?.has(id)){ if (!wsIdx.has(id)) wsIdx.set(id, []); wsIdx.get(id).push(w); } }));
+}
+function descendants(n){ const out = new Set(); (function w(id){ byId.get(id).children.forEach(c => { out.add(c); w(c); }); })(n.id); return out; }
+function branchWs(n){
+  if (!n.children.length) return [];
+  const ds = descendants(n), direct = new Set((wsIdx.get(n.id) || []).map(w => w.key));
+  return wsAll.filter(w => w.mapId === MAP.id && !direct.has(w.key) && w.ids.some(id => ds.has(id)));
+}
+function wsName(w){
+  if (w.name) return w.name;
+  const labels = w.ids.map(id => byId.get(id)?.label).filter(Boolean);
+  const ls = labels.length ? labels : w.labels;
+  return ls.length <= 1 ? (ls[0] || 'workspace') : `${ls[0]} + ${ls.length - 1} more`;
+}
+function ago(ts){
+  if (!ts) return 'never edited';
+  const s = (Date.now() - ts) / 1000;
+  return s < 60 ? 'just now' : s < 3600 ? `${Math.floor(s / 60)}m ago` : s < 86400 ? `${Math.floor(s / 3600)}h ago` : `${Math.floor(s / 86400)}d ago`;
+}
+function wsMeta(w){ return `${w.ids.length} node${w.ids.length === 1 ? '' : 's'} · ${w.count} item${w.count === 1 ? '' : 's'} · ${ago(w.updated)}`; }
+function openWsKey(key){
+  const w = wsAll.find(x => x.key === key); if (!w || w.mapId !== MAP.id) return;
+  openWorkspace(w.ids);
+}
+function refreshWs(){
+  indexWs();
+  const here = wsAll.filter(w => w.mapId === MAP.id);
+  $('shelfCount').textContent = here.length ? here.length : '';
+  if (nodeSel){
+    nodeSel.classed('hasws', n => wsIdx.has(n.id));
+    nodeSel.select('g.wsg').each(function(n){
+      const g = d3.select(this); g.selectAll('*').remove();
+      const list = wsIdx.get(n.id) || [], rr = n.r + 9;
+      list.slice(0, 4).forEach((w, i) => {
+        const a = -Math.PI / 4 + i * .62;
+        g.append('rect').attr('class','wsq').attr('data-ws', w.key).attr('x', Math.cos(a) * rr - 3.2).attr('y', Math.sin(a) * rr - 3.2)
+          .attr('width', 6.4).attr('height', 6.4).attr('rx', 1.3).append('title').text('Open workspace: ' + wsName(w));
+      });
+      if (list.length > 4){ const a = -Math.PI / 4 + 4 * .62; g.append('text').attr('class','wsmore').attr('font-size', 7).attr('x', Math.cos(a) * rr - 3).attr('y', Math.sin(a) * rr + 3).text('+' + (list.length - 4)); }
+      if (n.d <= 1){ const b = branchWs(n).length; if (b) g.append('text').attr('class','wsbranch').attr('font-size', 7.5).attr('text-anchor','middle').attr('y', -n.r - 8).text(`▣ ${b} nested`); }
+    });
+    nodeSel.select('.card').html(cardHTML);
+  }
+  if (selected && !panel.hidden) renderPanel(selected);
+  if (!$('shelf').hidden) renderShelf();
+}
+
+// shelf: every workspace on this map, outside the nodes
+const shelf = $('shelf');
+$('shelfBtn').onclick = () => toggleShelf();
+function toggleShelf(force){
+  const open = force ?? shelf.hidden;
+  shelf.hidden = !open; document.body.classList.toggle('shelf-open', open); $('shelfBtn').setAttribute('aria-pressed', open);
+  if (open) renderShelf(); else { wsHoverIds = null; paint(); }
+}
+function renderShelf(){
+  const here = wsAll.filter(w => w.mapId === MAP.id), other = wsAll.filter(w => w.mapId !== MAP.id);
+  const card = (w, canOpen) => {
+    const chips = w.ids.slice(0, 4).map(id => { const n = byId.get(id); return n ? `<span class="chip"><span class="dot" style="--c:${n.color}"></span><span>${esc(n.label)}</span></span>` : ''; }).join('');
+    return `<div class="wscard" data-hover="${esc(w.key)}">
+      ${canOpen ? `<button class="wsopen" type="button" data-wsopen="${esc(w.key)}"><b><span class="wsico" aria-hidden="true"></span><span>${esc(wsName(w))}</span></b>${chips ? `<span class="chips">${chips}${w.ids.length > 4 ? `<span class="chip">+${w.ids.length - 4}</span>` : ''}</span>` : ''}</button>`
+        : `<b><span class="wsico" aria-hidden="true" style="opacity:.4"></span><span>${esc(wsName(w))}</span></b><span class="wsmeta">from “${esc(w.mapTitle || 'an earlier map')}” · can’t open on this map</span>`}
+      <div class="wsmeta"><span>${canOpen ? wsMeta(w) : `${w.count} items · ${ago(w.updated)}`}</span><button class="del" type="button" data-wsdel="${esc(w.key)}">delete</button></div>
+    </div>`;
+  };
+  shelf.innerHTML = `
+    <div class="p-head"><h2>workspaces</h2><button class="close" type="button" data-shelfclose aria-label="Close workspaces"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+    ${here.length ? here.map(w => card(w, true)).join('') : `<p class="empty">No workspaces on this map yet. Double-click a node to step into one, or select a few nodes and press enter workspace.</p>`}
+    ${other.length ? `<h3>from earlier maps</h3>${other.map(w => card(w, false)).join('')}` : ''}`;
+}
+shelf.addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.hasAttribute('data-shelfclose')) return toggleShelf(false);
+  if (b.dataset.wsopen) return openWsKey(b.dataset.wsopen);
+  if (b.dataset.wsdel){
+    if (!b.hasAttribute('data-confirm')){ b.setAttribute('data-confirm', ''); b.textContent = 'confirm delete'; setTimeout(() => { if (b.isConnected){ b.removeAttribute('data-confirm'); b.textContent = 'delete'; } }, 3500); return; }
+    store.del(b.dataset.wsdel); wsHoverIds = null; refreshWs(); renderShelf(); paint(); toast('workspace deleted');
+  }
+});
+shelf.addEventListener('mouseover', e => { const c = e.target.closest('.wscard'); const w = c && wsAll.find(x => x.key === c.dataset.hover && x.mapId === MAP.id); const ids = w ? w.ids : null; if (String(ids) !== String(wsHoverIds)){ wsHoverIds = ids; paint(); } });
+shelf.addEventListener('mouseleave', () => { wsHoverIds = null; paint(); });
+
+// ======================= workspace =======================
+const ws = {ids: [], key: '', items: [], name: '', t: {x: 0, y: 0, k: 1}, sel: null};
+const board = $('board'), world = $('world'), wlinks = $('wlinks');
+const bZoom = d3.zoom().scaleExtent([.2, 3])
+  .filter(e => e.type === 'wheel' || (!e.target.closest('.item') && !e.button && e.type !== 'dblclick'))
+  .on('zoom', e => { ws.t = {x: e.transform.x, y: e.transform.y, k: e.transform.k}; applyBoard(); });
+d3.select(board).call(bZoom).on('dblclick.zoom', null);
+function applyBoard(){
+  const {x, y, k} = ws.t;
+  world.style.transform = `translate(${x}px,${y}px) scale(${k})`;
+  board.style.backgroundSize = `${24 * k}px ${24 * k}px`;
+  board.style.backgroundPosition = `${x}px ${y}px`;
+}
+function wsKey(ids){ return `neura-ws:${MAP.id}:${ids.slice().sort().join(',')}`; }
+function openWorkspace(ids){
+  ids = ids.filter(id => byId.has(id)); if (!ids.length) return;
+  if (playing) stop();
+  ws.ids = ids; ws.key = wsKey(ids); ws.sel = null;
+  const saved = store.get(ws.key);
+  ws.items = saved?.items || seedItems(ids);
+  ws.name = saved?.name || '';
+  $('wsTitle').textContent = ws.name || (ids.length === 1 ? byId.get(ids[0]).label : `workspace · ${ids.length} nodes`);
+  $('wsFrom').innerHTML = `<span>entered from</span>${ids.map(id => { const n = byId.get(id); return `<span class="ws-chip"><span class="dot" style="--c:${n.color}"></span>${esc(n.label)}</span>`; }).join('')}`;
+  $('wsAI').hidden = !sample; $('wsStatus').textContent = saved ? 'restored from this browser' : '';
+  $('ws').hidden = false; document.body.classList.add('ws-open');
+  renderItems(); requestAnimationFrame(() => fitBoard(0));
+  if (!saved) saveWs(true);
+}
+function closeWorkspace(){ clearTimeout(saveT); saveWs(true); $('ws').hidden = true; document.body.classList.remove('ws-open'); refreshWs(); }
+$('wsTitle').addEventListener('input', () => { ws.name = $('wsTitle').innerText.trim(); saveWsSoon(); });
+$('wsTitle').addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); $('wsTitle').blur(); } });
+$('wsBack').onclick = closeWorkspace;
+function seedItems(ids){
+  const items = []; let col = 0;
+  ids.forEach(id => {
+    const n = byId.get(id), x = col * 430;
+    items.push({id: 'n_' + id, type: 'node', ref: id, x, y: 0});
+    n.children.forEach((cid, j) => { const c = byId.get(cid);
+      items.push({id: 's_' + cid, type: 'sticky', text: c.label + (c.detail ? '\n\n' + c.detail : ''), tag: c.kind, color: n.color, x: x + (j % 2) * 195 - 10, y: 300 + Math.floor(j / 2) * 150}); });
+    col += 1;
+  });
+  return items;
+}
+function itemHTML(it){
+  if (it.type === 'node'){
+    const n = byId.get(it.ref); if (!n) return '';
+    return `<div class="i-head"><i></i><span>${esc(n.kind)}</span><span>#${String(n.i + 1).padStart(2,'0')}</span></div><h4>${esc(n.label)}</h4><p>${esc(n.detail)}</p>${n.quote ? `<blockquote>“${esc(n.quote)}”</blockquote>` : ''}`;
+  }
+  if (it.type === 'sticky') return `<div class="i-head"><span>${esc(it.tag || 'note')}</span><span></span></div><div class="i-text" contenteditable="plaintext-only" spellcheck="false">${esc(it.text)}</div>`;
+  if (it.type === 'text') return `<div class="i-text" contenteditable="plaintext-only" spellcheck="false">${esc(it.text)}</div>`;
+  if (it.type === 'file') return `<div class="i-head"><span>file · ${esc(it.size)}</span><span></span></div><h4>${esc(it.name)}</h4>${it.img ? `<img src="${it.img}" alt="${esc(it.name)}">` : it.preview ? `<pre>${esc(it.preview)}</pre>` : `<p>${it.note ? esc(it.note) : 'No preview for this file type.'}</p>`}`;
+  return '';
+}
+function renderItems(){
+  world.querySelectorAll('.item').forEach(el => el.remove());
+  ws.items.forEach(it => {
+    const el = document.createElement('div');
+    const n = it.type === 'node' ? byId.get(it.ref) : null;
+    if (it.type === 'node' && !n) return;
+    el.className = 'item ' + ({node: 'ncard', sticky: 'sticky', text: 'textitem', file: 'fileitem'}[it.type]) + (it.ai ? ' ai' : '');
+    el.dataset.id = it.id;
+    el.style.left = it.x + 'px'; el.style.top = it.y + 'px';
+    el.style.setProperty('--c', n ? n.color : (it.color || '#8597ae'));
+    el.innerHTML = itemHTML(it);
+    world.appendChild(el);
+  });
+  drawLinks();
+}
+function drawLinks(){
+  const nodeItems = ws.items.filter(i => i.type === 'node');
+  const els = new Map([...world.querySelectorAll('.item')].map(el => [el.dataset.id, el]));
+  const center = it => { const el = els.get(it.id); return el ? [it.x + el.offsetWidth / 2, it.y + el.offsetHeight / 2] : [it.x, it.y]; };
+  const paths = [];
+  for (let i = 0; i < nodeItems.length; i++) for (let j = i + 1; j < nodeItems.length; j++){
+    const a = nodeItems[i], b = nodeItems[j];
+    if (adj.get(a.ref)?.has(b.ref) || parentOf[a.ref] === parentOf[b.ref]){ const [x1, y1] = center(a), [x2, y2] = center(b); paths.push(`<path d="M${x1},${y1} C${(x1 + x2) / 2},${y1 - 60} ${(x1 + x2) / 2},${y2 - 60} ${x2},${y2}"/>`); }
+  }
+  ws.items.filter(i => i.type === 'sticky' && i.id.startsWith('s_')).forEach(s => {
+    const parent = nodeItems.find(nItem => parentOf[s.id.slice(2)] === nItem.ref); if (!parent) return;
+    const [x1, y1] = center(parent), el = els.get(s.id); if (!el) return;
+    const x2 = s.x + el.offsetWidth / 2, y2 = s.y; paths.push(`<path d="M${x1},${y1} L${x2},${y2}" style="stroke-dasharray:1 4"/>`);
+  });
+  wlinks.innerHTML = paths.join('');
+}
+// item dragging + selection
+let drag = null;
+world.addEventListener('pointerdown', e => {
+  const el = e.target.closest('.item'); if (!el || e.button) return;
+  const editing = e.target.closest('.i-text') && document.activeElement === e.target.closest('.i-text');
+  selectItem(el.dataset.id);
+  if (editing) return;
+  const it = ws.items.find(i => i.id === el.dataset.id);
+  drag = {el, it, sx: e.clientX, sy: e.clientY, x: it.x, y: it.y, moved: false, pid: e.pointerId};
+});
+addEventListener('pointermove', e => {
+  if (!drag) return;
+  const dx = (e.clientX - drag.sx) / ws.t.k, dy = (e.clientY - drag.sy) / ws.t.k;
+  if (!drag.moved && Math.abs(dx) + Math.abs(dy) < 4) return;
+  if (!drag.moved){ drag.moved = true; drag.el.classList.add('dragging'); document.activeElement?.blur?.(); }
+  drag.it.x = Math.round(drag.x + dx); drag.it.y = Math.round(drag.y + dy);
+  drag.el.style.left = drag.it.x + 'px'; drag.el.style.top = drag.it.y + 'px'; drawLinks();
+});
+addEventListener('pointerup', () => { if (!drag) return; drag.el.classList.remove('dragging'); if (drag.moved) saveWs(); drag = null; });
+world.addEventListener('input', e => {
+  const el = e.target.closest('.item'); if (!el) return;
+  const it = ws.items.find(i => i.id === el.dataset.id); if (it) { it.text = e.target.innerText; saveWsSoon(); }
+});
+function selectItem(id){ ws.sel = id; world.querySelectorAll('.item').forEach(el => el.classList.toggle('sel', el.dataset.id === id)); }
+board.addEventListener('pointerdown', e => { if (!e.target.closest('.item')) selectItem(null); });
+board.addEventListener('dblclick', e => { if (e.target.closest('.item')) return; const p = toWorld(e.clientX, e.clientY); addSticky(p.x - 90, p.y - 50, true); });
+function toWorld(cx, cy){ const r = board.getBoundingClientRect(); return {x: (cx - r.left - ws.t.x) / ws.t.k, y: (cy - r.top - ws.t.y) / ws.t.k}; }
+function viewCenter(){ const r = board.getBoundingClientRect(); return toWorld(r.left + r.width / 2, r.top + r.height / 2); }
+function addSticky(x, y, focus, text = '', extra = {}){
+  const it = Object.assign({id: 'u' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), type: 'sticky', text, tag: 'note', color: byId.get(ws.ids[0])?.color, x: Math.round(x), y: Math.round(y)}, extra);
+  ws.items.push(it); renderItems(); selectItem(it.id); saveWs();
+  if (focus){ const t = world.querySelector(`.item[data-id="${it.id}"] .i-text`); t?.focus(); }
+  return it;
+}
+$('wsSticky').onclick = () => { const c = viewCenter(); addSticky(c.x - 90, c.y - 56, true); };
+$('wsText').onclick = () => { const c = viewCenter(); const it = {id: 't' + Date.now().toString(36), type: 'text', text: 'heading', x: Math.round(c.x - 120), y: Math.round(c.y - 20)};
+  ws.items.push(it); renderItems(); selectItem(it.id); saveWs(); const t = world.querySelector(`.item[data-id="${it.id}"] .i-text`); t?.focus(); document.execCommand?.('selectAll'); };
+$('wsFile').onclick = () => $('wsFiles').click();
+$('wsFiles').onchange = e => { const r = board.getBoundingClientRect(); wsDropFiles([...e.target.files], r.left + r.width / 2, r.top + r.height / 2); e.target.value = ''; };
+addEventListener('keydown', e => {
+  if (e.key === 'Escape'){
+    if (!$('sheet').hidden) return closeImport();
+    if (!$('ws').hidden){ if (document.activeElement?.isContentEditable) return document.activeElement.blur(); return closeWorkspace(); }
+    if (selected) closePanel();
+    return;
+  }
+  if ((e.key === 'Delete' || e.key === 'Backspace') && !$('ws').hidden && ws.sel && !document.activeElement?.isContentEditable && document.activeElement?.tagName !== 'INPUT'){
+    e.preventDefault(); ws.items = ws.items.filter(i => i.id !== ws.sel); ws.sel = null; renderItems(); saveWs();
+  }
+});
+async function wsDropFiles(files, cx, cy){
+  const p = toWorld(cx, cy); let off = 0;
+  for (const f of files){
+    const size = f.size < 1024 ? f.size + ' B' : f.size < 1048576 ? (f.size / 1024).toFixed(1) + ' KB' : (f.size / 1048576).toFixed(1) + ' MB';
+    const it = {id: 'f' + Date.now().toString(36) + off, type: 'file', name: f.name, size, x: Math.round(p.x - 125 + off), y: Math.round(p.y - 60 + off)};
+    if (/^image\//.test(f.type)){
+      if (f.size <= 900 * 1024) it.img = await new Promise(res => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = () => res(''); r.readAsDataURL(f); });
+      else { it.img = URL.createObjectURL(f); it.temp = true; }
+    } else if (/^text\//.test(f.type) || TEXT_EXT.test(f.name)){
+      it.preview = (await f.text()).slice(0, 1200);
+    } else it.note = 'Stored as a reference. Preview works for text and images.';
+    ws.items.push(it); off += 24;
+  }
+  renderItems(); saveWs();
+}
+let saveT = null;
+function saveWsSoon(){ clearTimeout(saveT); saveT = setTimeout(saveWs, 500); }
+function saveWs(quiet){
+  if (!ws.key) return;
+  const ok = store.set(ws.key, {name: ws.name, updated: Date.now(), mapTitle: MAP.title, labels: ws.ids.map(id => byId.get(id)?.label || ''),
+    items: ws.items.map(i => i.temp ? Object.assign({}, i, {img: '', note: 'Large image: drop it again after reloading.'}) : i)});
+  if (!quiet || !ok) $('wsStatus').textContent = ok ? 'saved in this browser' : 'couldn’t save (browser storage is off or full)';
+}
+function fitBoard(dur = 400){
+  const els = [...world.querySelectorAll('.item')]; if (!els.length) return;
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  els.forEach(el => { const it = ws.items.find(i => i.id === el.dataset.id); x0 = Math.min(x0, it.x); y0 = Math.min(y0, it.y); x1 = Math.max(x1, it.x + el.offsetWidth); y1 = Math.max(y1, it.y + el.offsetHeight); });
+  const r = board.getBoundingClientRect(), pad = 60;
+  const k = Math.max(.2, Math.min(1.1, (r.width - pad * 2) / (x1 - x0), (r.height - pad * 2) / (y1 - y0)));
+  const t = d3.zoomIdentity.translate(r.width / 2 - k * (x0 + x1) / 2, r.height / 2 - k * (y0 + y1) / 2).scale(k);
+  (dur && !RM ? d3.select(board).transition().duration(dur) : d3.select(board)).call(bZoom.transform, t);
+}
+$('wzin').onclick = () => d3.select(board).transition().duration(RM ? 0 : 200).call(bZoom.scaleBy, 1.3);
+$('wzout').onclick = () => d3.select(board).transition().duration(RM ? 0 : 200).call(bZoom.scaleBy, 1 / 1.3);
+$('wzfit').onclick = () => fitBoard();
+
+// AI next steps inside a workspace
+$('wsAI').onclick = async () => {
+  if (!sample) return;
+  const btn = $('wsAI'); btn.disabled = true;
+  $('wsStatus').innerHTML = '<span class="spin" aria-hidden="true"></span> thinking about next steps…';
+  const ctx = ws.ids.map(id => { const n = byId.get(id); return `- ${n.label} (${n.kind}): ${n.detail}${n.quote ? ` Quote: "${n.quote}"` : ''}\n  inside: ${n.children.map(c => byId.get(c).label).join('; ') || 'nothing'}`; }).join('\n');
+  const notes = ws.items.filter(i => i.type === 'sticky' && i.id.startsWith('u') && i.text.trim()).map(i => '- ' + i.text.trim().slice(0, 200)).join('\n');
+  try {
+    const arr = await sample.json(`A team brainstormed and is now working on these ideas from their conversation map:\n${ctx}\n${notes ? `Their notes on the whiteboard so far:\n${notes}\n` : ''}\nPropose 5 concrete next steps the team could do this week to move these ideas forward. Reply with ONLY a JSON array of strings, each under 16 words, starting with a verb.`, {cache: false});
+    const list = (Array.isArray(arr) ? arr : []).map(String).filter(Boolean).slice(0, 6);
+    if (!list.length) throw {code: 'empty_completion'};
+    let x1 = -Infinity, y0 = Infinity;
+    world.querySelectorAll('.item').forEach(el => { const it = ws.items.find(i => i.id === el.dataset.id); x1 = Math.max(x1, it.x + el.offsetWidth); y0 = Math.min(y0, it.y); });
+    list.forEach((t, i) => ws.items.push({id: 'ai' + Date.now().toString(36) + i, type: 'sticky', ai: true, tag: 'AI · next step', text: t, x: Math.round(x1 + 80 + (i % 2) * 195), y: Math.round(y0 + Math.floor(i / 2) * 140)}));
+    renderItems(); saveWs(); fitBoard();
+    $('wsStatus').textContent = `${list.length} next steps added · edit or delete any of them`;
+  } catch (e) {
+    $('wsStatus').textContent = e?.code === 'not_granted' ? 'Claude access was declined for this page.' : e?.code === 'rate_limited' ? 'Too many requests. Try again in a minute.' : 'Couldn’t generate next steps. Try again.';
+  } finally { btn.disabled = false; }
+};
+
+// ---------- start ----------
+const savedMap = store.get('neura-map');
+let initial = structuredClone(SAMPLE);
+if (savedMap){ try { const m = savedMap.data?.root ? savedMap : null; if (m) initial = m; } catch (e) {} }
+loadMap(initial, {fresh: true});
+addEventListener('resize', () => { if ($('ws').hidden) fitAll(0); });
+})();
+</script>
+
+</body></html>
