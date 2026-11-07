@@ -54,6 +54,15 @@ body[data-zoom="near"] .lbl,body[data-zoom="near"] .node .body,body[data-zoom="n
 body[data-zoom="near"] .cardfo{display:inline}
 .card{width:168px;padding:7px 8px 8px;border-radius:3px;background:rgba(10,17,29,.94);border:1px solid color-mix(in srgb, var(--c) 45%, transparent);
   box-shadow:0 0 14px color-mix(in srgb, var(--c) 22%, transparent);font-family:var(--code);color:var(--fg);display:flex;flex-direction:column;gap:4px}
+.card.t-idea,.card.t-hub{border-top:2.5px solid var(--c)}
+.card.t-question{border-style:dashed;border-color:var(--c);border-radius:12px}
+.card.t-example,.card.t-ref{border-left:3px solid var(--c)}
+.card.t-ref{background:rgba(20,28,42,.96)}
+.card.t-task{border-color:var(--c)}
+.card.t-suggestion{border-style:dashed;border-color:var(--accent);opacity:.85}
+.card.t-question .c-title::before{content:'?';display:inline-grid;place-items:center;width:10px;height:10px;margin-right:4px;border-radius:50%;background:var(--c);color:var(--bg);font-size:7px;vertical-align:1px}
+.card.t-task .c-title::before{content:'';display:inline-block;width:7px;height:7px;margin-right:4px;border:1px solid var(--c);border-radius:1.5px;vertical-align:0}
+.card .c-quote{font-family:Georgia, 'Times New Roman', serif;font-size:6.6px}
 .node.sel .card{border-color:var(--c);box-shadow:0 0 22px color-mix(in srgb, var(--c) 45%, transparent)}
 .node.picked .card{outline:1.5px dashed var(--accent);outline-offset:3px}
 .c-head{display:flex;align-items:center;gap:5px;font-size:5.4px;letter-spacing:.08em;text-transform:uppercase;color:var(--c)}
@@ -172,6 +181,7 @@ blockquote{margin:0;padding:9px 11px;background:var(--surface-2);border-radius:3
 .toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 70px);transform:translateX(-50%);z-index:40;padding:8px 12px;font-size:11px;border-color:var(--accent);display:flex;align-items:center;gap:10px;max-width:calc(100vw - 32px)}
 .toast[hidden]{display:none}
 .toast-act{all:unset;cursor:pointer;color:var(--accent);font-weight:700;white-space:nowrap;border-left:1px solid var(--line);padding-left:10px}
+.toast-act + .toast-act{border-left:none;padding-left:0}
 .toast-act:hover{text-decoration:underline}
 .toast-act:focus-visible{outline:1.5px solid var(--accent);outline-offset:3px}
 
@@ -221,12 +231,18 @@ body.ws-open .bar,body.ws-open .replay,body.ws-open .zoombox,body.ws-open .zooml
 /* ---- node types ---- */
 .node.suggestion .lbl{fill:var(--accent);font-style:italic}
 .zoomlvl{gap:7px;max-width:330px}
-.tchips{display:flex;flex-wrap:wrap;gap:4px}
-.tchip{background:var(--surface-2);border:1px solid transparent;border-radius:3px;padding:4px 7px 4px 6px;font-size:10px;color:var(--fg);cursor:pointer;display:flex;align-items:center;gap:5px}
+.filters{flex-basis:100%;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding:2px 1px 4px;pointer-events:none}
+.filters::-webkit-scrollbar{display:none}
+.filters > *{pointer-events:auto}
+.tchip{flex:none;background:var(--surface);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);border:1px solid var(--line);border-radius:999px;padding:5px 11px 5px 9px;font:inherit;font-size:10.5px;color:var(--fg);cursor:pointer;display:flex;align-items:center;gap:6px;transition:border-color .15s, background .15s}
 .tchip span{color:var(--muted);font-variant-numeric:tabular-nums}
-.tchip[aria-pressed="false"]{background:none;border-color:var(--line);color:var(--muted)}
-.tchip[aria-pressed="false"] svg{opacity:.35}
-.tchip:focus-visible{outline:1px solid var(--accent)}
+.tchip:hover{border-color:var(--muted)}
+.tchip[aria-pressed="true"]{border-color:var(--accent);background:color-mix(in srgb, var(--accent) 16%, var(--surface));box-shadow:0 0 12px rgba(139,226,234,.25)}
+.tchip[aria-pressed="true"] span{color:var(--accent)}
+.tchip.clear{color:var(--muted);border-style:dashed}
+.tchip:focus-visible{outline:1.5px solid var(--accent);outline-offset:2px}
+.node.hl .lbl{display:inline!important;fill:#fff;opacity:1!important}
+.node.hl .body{stroke:#fff;stroke-width:1.6}
 .lsize{font-size:9.5px;color:var(--muted)}
 /* size + mix visualisation (cards and panel) */
 .c-viz{display:flex;flex-direction:column;gap:3px;margin-top:3px;padding-top:5px;border-top:1px solid color-mix(in srgb, var(--c) 25%, transparent)}
@@ -237,7 +253,7 @@ body.ws-open .bar,body.ws-open .replay,body.ws-open .zoombox,body.ws-open .zooml
 .c-mix i,.mix i{display:block;height:100%;min-width:2px}
 .mx-idea{background:var(--c)}
 .mx-question{background:#0a111d;box-shadow:inset 0 0 0 1px var(--c)}
-.mx-task{background:color-mix(in srgb, var(--c) 42%, transparent)}
+.mx-task{background:repeating-linear-gradient(90deg, var(--c) 0 1px, #0a111d 1px 3px);box-shadow:inset 0 0 0 1px var(--c)}
 .mx-ref{background:#5d6478}
 .mx-suggestion{background:repeating-linear-gradient(90deg, var(--accent) 0 2px, transparent 2px 4px)}
 .c-bar{display:grid;grid-template-columns:auto 58px 1fr;gap:4px;align-items:center;font-size:5.4px;color:var(--lbl)}
@@ -310,6 +326,9 @@ body.shelf-open .zoomlvl{display:none}
 }
 @media (prefers-reduced-motion: reduce){ *{animation:none!important;transition:none!important} }
 /* ---- drag files onto the map: node · cloud · anywhere ---- */
+.glyph{font-family:var(--code);font-weight:700;pointer-events:none}
+body[data-zoom="near"] .glyph,body[data-zoom="near"] .fglyph{display:none}
+.mx-example{background:color-mix(in srgb, var(--c) 55%, transparent);box-shadow:inset 0 0 0 1px var(--c)}
 .mx-file{background:repeating-linear-gradient(90deg, #c9d4e3 0 3px, #5d6478 3px 4px)}
 .node.file .fglyph{fill:none;stroke:var(--bg);stroke-width:1;pointer-events:none;opacity:.85}
 .node.file .lbl{fill:#d8e2ef}
@@ -324,6 +343,59 @@ body.shelf-open .zoomlvl{display:none}
 .fbadge text{font-family:var(--code);font-size:7.5px;fill:#d8e2ef;font-weight:700}
 .fbadge:hover rect{stroke:#fff;stroke-opacity:1}
 body[data-zoom="near"] .fbadge{display:none}
+.pop{position:fixed;z-index:8;width:300px;max-height:min(72vh, 540px);overflow-y:auto;padding:12px 13px 12px;display:flex;flex-direction:column;gap:9px;
+  border-top:2px solid var(--c);box-shadow:0 18px 50px rgba(0,0,0,.6), 0 0 26px color-mix(in srgb, var(--c) 22%, transparent);background:rgba(10,16,27,.96)}
+.pp-head{display:flex;align-items:center;gap:6px;font-size:9.5px;text-transform:uppercase;letter-spacing:.08em}
+.pp-type{color:var(--c);font-weight:700}
+.pp-theme{color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pp-head .close{all:unset;margin-left:auto;cursor:pointer;color:var(--muted);padding:2px 4px;font-size:15px;line-height:1}
+.pp-head .close:hover{color:var(--fg)}
+.pp-head .close:focus-visible{outline:1.5px solid var(--accent)}
+.pop h3{margin:0;font-size:14px;font-weight:700;line-height:1.35;text-wrap:balance}
+.pp-meta{margin:-4px 0 0;font-size:9.5px;color:var(--muted)}
+.pp-body{margin:0;font-size:11px;line-height:1.65;color:var(--lbl)}
+.pp-img{display:block;width:100%;max-height:150px;object-fit:contain;border-radius:3px;background:#fff}
+.pp-sec{display:flex;flex-direction:column;gap:6px;padding-top:8px;border-top:1px solid var(--line)}
+.pp-sec h4{margin:0;font-size:9.5px;font-weight:400;color:var(--muted)}
+.pp-sec h4::before{content:'// ';color:var(--accent)}
+.pop blockquote{margin:0;padding:7px 9px;font-family:Georgia, 'Times New Roman', serif;font-size:12px;line-height:1.5;font-style:italic;color:var(--fg);border-left:2px solid var(--c);background:color-mix(in srgb, var(--c) 7%, transparent);border-radius:0 3px 3px 0}
+.pop cite{all:unset;display:block;margin-top:3px;font-family:var(--code);font-size:9px;font-style:normal;color:var(--muted);cursor:pointer}
+.pop cite:hover{color:var(--accent)}
+.pp-tags{display:flex;flex-wrap:wrap;gap:4px}
+.pp-tags button{all:unset;cursor:pointer;display:flex;align-items:center;gap:5px;max-width:100%;padding:3px 7px;border:1px solid var(--line);border-radius:999px;font-size:9.5px;color:var(--lbl);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pp-tags button:hover{border-color:var(--c);color:var(--fg)}
+.pp-tags button:focus-visible{outline:1.5px solid var(--accent)}
+.pp-actions{display:flex;gap:6px;padding-top:2px}
+.plan{position:fixed;top:calc(env(safe-area-inset-top,0px) + 14px);right:max(16px, env(safe-area-inset-right,0px));bottom:calc(env(safe-area-inset-bottom,0px) + 14px);width:380px;z-index:9;
+  display:flex;flex-direction:column;gap:12px;padding:16px;overflow-y:auto;background:rgba(9,14,24,.97);box-shadow:0 20px 60px rgba(0,0,0,.6)}
+.plan h2{margin:0;font-size:16px;font-weight:700}
+.pl-sub{margin:-6px 0 0;font-size:10px;color:var(--muted);line-height:1.5}
+.pl-prog{height:4px;border-radius:2px;background:var(--surface-2);overflow:hidden;flex:none}
+.pl-prog i{display:block;height:100%;background:var(--accent);box-shadow:0 0 6px var(--accent);transition:width .25s}
+.pl-tools{display:flex;flex-wrap:wrap;gap:6px}
+.pl-task{border:1px solid var(--line);border-radius:4px;padding:10px 11px;display:flex;flex-direction:column;gap:7px;background:rgba(14,21,34,.8)}
+.pl-task.done{opacity:.55}
+.pl-task h3{margin:0;font-size:12.5px;font-weight:700;display:flex;gap:8px;align-items:baseline;line-height:1.4}
+.pl-task h3 span{margin-left:auto;font-size:9.5px;font-weight:400;color:var(--muted);white-space:nowrap}
+.pl-why{margin:0;font-size:10.5px;line-height:1.55;color:var(--lbl)}
+.pl-steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px}
+.pl-steps label{display:flex;gap:8px;align-items:flex-start;padding:4px 2px;font-size:11px;line-height:1.45;cursor:pointer;border-radius:3px}
+.pl-steps label:hover{background:var(--surface-2)}
+.pl-steps input{margin:2px 0 0;accent-color:var(--accent);flex:none}
+.pl-steps input:checked + span{text-decoration:line-through;color:var(--muted)}
+.pl-steps small{margin-left:auto;padding-left:8px;color:var(--muted);font-size:9.5px;white-space:nowrap}
+.pl-src{display:flex;flex-wrap:wrap;gap:4px}
+.pl-src button{all:unset;cursor:pointer;display:flex;align-items:center;gap:4px;font-size:9.5px;color:var(--muted);padding:2px 6px;border:1px dashed var(--line);border-radius:999px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pl-src button:hover{color:var(--accent);border-color:var(--accent)}
+.pl-src button:focus-visible{outline:1.5px solid var(--accent)}
+.pl-key{display:flex;flex-direction:column;gap:6px;font-size:10.5px;color:var(--muted);border-top:1px solid var(--line);padding-top:10px;line-height:1.55}
+.pl-key summary{cursor:pointer;color:var(--lbl)}
+.pl-key input{font:inherit;font-size:11px;background:var(--surface-2);border:1px solid var(--line);border-radius:3px;color:var(--fg);padding:6px 8px;flex:1;min-width:0}
+.pl-key .row2{display:flex;gap:6px;align-items:center;margin-top:6px}
+@media (max-width:760px){
+  .plan{top:auto;left:0;right:0;bottom:0;width:auto;max-height:75vh;border-radius:12px 12px 0 0}
+  body.plan-open .replay,body.plan-open .zoombox,body.plan-open .tray{display:none}
+}
 .callout{position:fixed;z-index:12;pointer-events:none;display:flex;flex-direction:column;gap:2px;padding:6px 9px;font-size:10px;max-width:260px;
   border-color:var(--cc, var(--accent));box-shadow:0 0 22px color-mix(in srgb, var(--cc, var(--accent)) 35%, transparent);transform:translate(-50%, calc(-100% - 16px))}
 .callout b{font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -357,6 +429,7 @@ body[data-zoom="near"] .fbadge{display:none}
 .dropbar i.k-node{border-radius:50%}
 .dropbar i.k-cloud{border-radius:3px;border-style:dashed}
 .dropbar i.k-free{border-radius:1px;border-style:dotted}
+@media (max-width:760px){.tools{max-width:100%;overflow-x:auto;scrollbar-width:none;flex-wrap:nowrap}.tools::-webkit-scrollbar{display:none}.tools .tbtn{flex:none;white-space:nowrap}}
 @media (max-width:760px){.dropbar{flex-direction:column;gap:4px;bottom:calc(env(safe-area-inset-bottom,0px) + 150px)}}
 .fprev{display:block;max-width:100%;max-height:220px;border-radius:3px;border:1px solid var(--line);object-fit:contain;background:#000}
 .ftext{margin:0;padding:9px 11px;background:var(--surface-2);border-radius:3px;font-size:10.5px;line-height:1.6;white-space:pre-wrap;word-break:break-word;max-height:220px;overflow:auto;color:var(--lbl)}
@@ -376,12 +449,14 @@ body[data-zoom="near"] .fbadge{display:none}
     <button type="button" class="tbtn" id="selBtn" aria-pressed="false">select</button>
     <button type="button" class="tbtn" id="pathBtn" aria-pressed="true">path</button>
     <button type="button" class="tbtn" id="tidyBtn">tidy</button>
+    <button type="button" class="tbtn" id="undoBtn" disabled aria-label="Undo">↶ undo</button>
     <button type="button" class="tbtn hot" id="importBtn">+ transcripts</button>
+    <button type="button" class="tbtn hot" id="planBtn">✓ next steps</button>
   </div>
+  <div class="filters" id="tchips" role="group" aria-label="Highlight nodes by type"></div>
 </div>
 
 <div class="zoomlvl glass"><span aria-live="polite">view: <b id="lvlName">nodes</b> · <span id="lvlHint">zoom in for summaries</span></span>
-  <div class="tchips" id="tchips" role="group" aria-label="Show node types"></div>
   <span class="lsize">dot size · how much sits under each node</span></div>
 
 <div class="tray glass" id="tray" hidden>
@@ -408,13 +483,15 @@ body[data-zoom="near"] .fbadge{display:none}
 
 <div class="dropzone" id="dropzone" hidden><div><b id="dzTitle">drop transcripts to restructure the map</b><span id="dzSub">.txt · .md · .vtt · .srt · .pdf · neura .json</span></div></div>
 <div class="drophud glass" id="drophud" hidden aria-live="polite"></div>
-<div class="dropbar glass" id="dropbar" hidden><span data-z="node"><i class="k-node"></i>near a node · attach</span><span data-z="cloud"><i class="k-cloud"></i>inside a cloud · add to theme</span><span data-z="free"><i class="k-free"></i>open space · leave loose</span></div>
+<div class="dropbar glass" id="dropbar" hidden><span data-z="node"><i class="k-node"></i>near a node · attach</span><span data-z="cloud"><i class="k-cloud"></i>inside a cloud · add to theme</span><span data-z="free"><i class="k-free"></i>open space · auto-sort (⌥ = loose)</span></div>
 <div class="backdrop" id="backdrop" hidden></div>
 <section class="sheet glass" id="sheet" hidden role="dialog" aria-modal="true" aria-labelledby="sheetTitle"></section>
 <input type="file" id="mapFiles" multiple accept=".txt,.md,.markdown,.vtt,.srt,.json,.pdf,text/plain,application/pdf" hidden>
 <input type="file" id="pdfAgain" accept=".pdf,application/pdf" hidden>
 <div class="toast glass" id="toast" hidden role="status"></div>
 <div class="callout glass" id="callout" hidden></div>
+<div class="pop glass" id="pop" hidden role="dialog" aria-label="Node details"></div>
+<aside class="plan glass" id="plan" hidden aria-label="Next steps"></aside>
 
 <!-- workspace -->
 <div class="ws" id="ws" hidden>
@@ -454,7 +531,7 @@ const store = {
 };
 function toast(msg, act){
   const t = $('toast'); t.textContent = msg; t.hidden = false; clearTimeout(toast.t);
-  if (act){ const b = document.createElement('button'); b.type = 'button'; b.className = 'toast-act'; b.textContent = act.label; b.onclick = () => { t.hidden = true; act.fn(); }; t.append(b); }
+  [].concat(act || []).forEach(a => { const b = document.createElement('button'); b.type = 'button'; b.className = 'toast-act'; b.textContent = a.label; b.onclick = () => { t.hidden = true; a.fn(); }; t.append(b); });
   toast.t = setTimeout(() => t.hidden = true, act ? 7000 : 3200);
 }
 
@@ -504,27 +581,42 @@ function buildModel(map){
 
 function kindType(k){
   if (/question|what if|\?/i.test(k)) return 'question';
-  if (/task|to-?do|action item/i.test(k)) return 'task';
-  if (/reference|competitor|tool/i.test(k)) return 'ref';
+  if (/\b(task|to-?do|action( item)?|outcome|next step)s?\b/i.test(k)) return 'task';
+  if (/example|case|story/i.test(k)) return 'example';
+  if (/reference|competitor|tool|product|research|resource/i.test(k)) return 'ref';
   return 'idea';
 }
-const TYPES = [['idea','ideas'],['question','questions'],['task','to-dos'],['ref','references'],['file','files'],['suggestion','ai suggestions']];
+const TYPES = [['idea','ideas'],['question','questions'],['example','examples'],['ref','resources'],['task','actions'],['file','files'],['suggestion','ai suggestions']];
+const TYPE_NAME = {hub: 'theme', idea: 'idea', question: 'question', example: 'example', ref: 'resource', task: 'action', file: 'file', suggestion: 'ai suggestion'};
+// one simple shape per type so they read at a glance, even zoomed out
+//  idea ● circle · question ◯ ring with ? · example ⬢ hexagon · resource ◆ diamond · action ▢ square with ✓ · file ▤ page · ai ◌ dashed
+function shapeD(t, r){
+  const P = pts => 'M' + pts.map(p => p.map(v => +v.toFixed(2)).join(',')).join('L') + 'Z';
+  if (t === 'example') return P([0,1,2,3,4,5].map(i => [Math.cos(Math.PI / 6 + i * Math.PI / 3) * r * 1.12, Math.sin(Math.PI / 6 + i * Math.PI / 3) * r * 1.12]));
+  if (t === 'ref') return P([[0, -r * 1.3], [r * 1.3, 0], [0, r * 1.3], [-r * 1.3, 0]]);
+  if (t === 'task'){ const q = r * .95, c = r * .35; return `M${-q + c},${-q}H${q - c}Q${q},${-q} ${q},${-q + c}V${q - c}Q${q},${q} ${q - c},${q}H${-q + c}Q${-q},${q} ${-q},${q - c}V${-q + c}Q${-q},${-q} ${-q + c},${-q}Z`; }
+  if (t === 'file'){ const q = r, f = r * .55; return `M${-q},${-q}H${q - f}L${q},${-q + f}V${q}H${-q}Z`; }
+  return null;   // circles
+}
+const GLYPH = {question: '?', task: '✓'};
 const shownTypes = new Set(TYPES.map(t => t[0]));
 const LOOSEC = '#c9d4e3';
 function typeIcon(t, c, s = 10){
-  const r = s / 2 - 1.2;
-  if (t === 'file') return `<svg width="${s}" height="${s}" viewBox="0 0 ${s} ${s}" aria-hidden="true" style="flex:none"><rect x="1.2" y="1.2" width="${s - 2.4}" height="${s - 2.4}" rx="1.4" fill="#c9d4e3" stroke="${c}" stroke-width="1"/></svg>`;
-  const st = {hub: `fill="${c}"`, idea: `fill="${c}"`, question: `fill="none" stroke="${c}" stroke-width="1.4"`, task: `fill="${c}" fill-opacity=".42" stroke="${c}" stroke-opacity=".7"`,
-    ref: `fill="#5d6478"`, suggestion: `fill="none" stroke="#8be2ea" stroke-width="1.2" stroke-dasharray="2 2"`}[t];
-  return `<svg width="${s}" height="${s}" viewBox="0 0 ${s} ${s}" aria-hidden="true" style="flex:none"><circle cx="${s / 2}" cy="${s / 2}" r="${r}" ${st}/></svg>`;
+  if (t === 'quote') return `<svg width="${s}" height="${s}" viewBox="0 0 10 10" aria-hidden="true" style="flex:none"><path d="M1 6.5Q1 3 4 2.2V3.6Q2.6 4.2 2.6 5H4V8.5H1ZM6 6.5Q6 3 9 2.2V3.6Q7.6 4.2 7.6 5H9V8.5H6Z" fill="${c}"/></svg>`;
+  const r = s / 2 - 1.4, d = shapeD(t, r * (t === 'ref' ? .78 : t === 'example' ? .9 : 1));
+  const st = {hub: `fill="${c}"`, idea: `fill="${c}"`, question: `fill="none" stroke="${c}" stroke-width="1.3"`, task: `fill="none" stroke="${c}" stroke-width="1.3"`,
+    example: `fill="${c}" fill-opacity=".55" stroke="${c}" stroke-width="1"`, ref: `fill="#5d6478" stroke="${c}" stroke-width="1"`, file: `fill="#c9d4e3" stroke="${c}" stroke-width="1"`,
+    suggestion: `fill="none" stroke="#8be2ea" stroke-width="1.2" stroke-dasharray="2 2"`}[t] || `fill="${c}"`;
+  return `<svg width="${s}" height="${s}" viewBox="${-s / 2} ${-s / 2} ${s} ${s}" aria-hidden="true" style="flex:none">${d ? `<path d="${d}" ${st}/>` : `<circle r="${r}" ${st}/>`}</svg>`;
 }
 function bodyStyle(n){
   const c = n.color;
   switch (n.type){
     case 'file': return `fill:#c9d4e3;stroke:${c};stroke-width:1.4`;
     case 'question': return `fill:var(--bg);stroke:${c};stroke-width:1.6`;
-    case 'task': return `fill:${c};fill-opacity:.42;stroke:${c};stroke-opacity:.7;stroke-width:1`;
-    case 'ref': return `fill:#5d6478`;
+    case 'task': return `fill:var(--bg);stroke:${c};stroke-width:1.6`;
+    case 'example': return `fill:${c};fill-opacity:.55;stroke:${c};stroke-width:1.2`;
+    case 'ref': return `fill:#5d6478;stroke:${c};stroke-width:1.2`;
     case 'suggestion': return `fill:var(--bg);stroke:#8be2ea;stroke-width:1.4;stroke-dasharray:2 2`;
     default: return `fill:${c}`;
   }
@@ -571,7 +663,7 @@ function placeRadial(p, a, span, rad){
 }
 const shown = n => n.i <= step && !hiddenByFold(n) && ((n.d <= 1 && !n.file) || shownTypes.has(n.type));
 // zoomed out, deep thoughts hide to keep the overview calm, but dropped files stay visible so they can be found again
-const farHidden = n => lvl === 'far' && n.d >= 3 && !(n.file && !n.pageOf);
+const farHidden = n => lvl === 'far' && n.d >= 3 && !(n.file && !n.pageOf) && !(hlSet && hlSet.has(n.id));
 function hiddenByFold(n){ let id = parentOf[n.id]; while (id){ if (folded.has(id)) return true; id = parentOf[id]; } return false; }
 
 // ---------- simulation ----------
@@ -619,10 +711,12 @@ function buildScene(){
     const g = enter.append('g').attr('class', n => 'node d' + Math.min(n.d, 3) + ' ' + n.type + (n.loose ? ' loose' : '') + (n.pageOf ? ' page' : ''));
     g.append('circle').attr('class','pickring').attr('r', n => n.r + 7);
     // files are small rounded squares (a page) so they read differently from spoken thoughts
-    g.append(n => document.createElementNS('http://www.w3.org/2000/svg', n.type === 'file' ? 'rect' : 'circle')).attr('class','body')
-      .each(function(n){ if (n.type === 'file') d3.select(this).attr('x', -n.r).attr('y', -n.r).attr('width', n.r * 2).attr('height', n.r * 2).attr('rx', 1.6); else d3.select(this).attr('r', n.r); })
+    g.append(n => document.createElementNS('http://www.w3.org/2000/svg', shapeD(n.type, n.r) ? 'path' : 'circle')).attr('class','body')
+      .each(function(n){ const d = shapeD(n.type, n.r); d ? d3.select(this).attr('d', d) : d3.select(this).attr('r', n.r); })
       .attr('filter', n => n.type === 'ref' ? null : 'url(#glow)').attr('style', bodyStyle);
-    g.filter(n => n.type === 'file').append('path').attr('class','fglyph').attr('d', n => { const r = n.r * .55; return `M${-r},${-r * .35}H${r}M${-r},${r * .35}H${r * .4}`; });
+    g.filter(n => n.type === 'file').append('path').attr('class','fglyph').attr('d', n => { const r = n.r * .5; return `M${-r},${-r * .15}H${r * .6}M${-r},${r * .45}H${r * .6}`; });
+    g.filter(n => GLYPH[n.type]).append('text').attr('class','glyph').attr('text-anchor','middle').attr('dy', n => n.r * .42)
+      .attr('font-size', n => n.r * (n.type === 'task' ? 1.15 : 1.25)).attr('fill', n => n.color).text(n => GLYPH[n.type]);
     g.append('circle').attr('class','core').attr('r', n => n.r * .4).attr('display', n => (n.type === 'hub' || n.type === 'idea') && n.d <= 2 ? null : 'none').attr('style','fill:#fff;fill-opacity:.82');
     g.append('text').attr('class', n => 'lbl t' + Math.min(n.d, 3)).attr('text-anchor','middle').attr('dy', n => n.r + 11)
       .attr('font-size', n => [10, 9.5, 8.2, 7.2][Math.min(n.d, 3)]).text(n => n.label);
@@ -631,13 +725,13 @@ function buildScene(){
     fb.append('rect').attr('rx', 2.5).attr('height', 13).attr('y', -6.5).attr('x', 0).attr('width', n => 22 + String(fileKids(n).length).length * 6);
     fb.append('text').attr('x', 5).attr('y', 3.4).text(n => '▤ ' + fileKids(n).length);
     const fo = g.append('foreignObject').attr('class','cardfo').attr('x', -84).attr('y', -18).attr('width', 168).attr('height', 200);
-    fo.append('xhtml:div').attr('class','card').attr('style', n => `--c:${n.color}`).html(cardHTML);
+    fo.append('xhtml:div').attr('class', n => 'card t-' + n.type).attr('style', n => `--c:${n.color}`).html(cardHTML);
     g.attr('tabindex', 0).attr('role','button').attr('aria-label', n => n.label);
     g.on('click', (e, n) => {
        e.stopPropagation();
        const door = e.target.closest('[data-ws]'); if (door) return openWsKey(door.getAttribute('data-ws'));
        if (e.target.closest('.fbadge')){ const fk = fileKids(n); select(n, false); return focusDrop(fk.map(f => f.id), n.id); }
-       if (selectMode || e.shiftKey || e.metaKey || e.ctrlKey) togglePick(n); else select(n, true); })
+       if (selectMode || e.shiftKey || e.metaKey || e.ctrlKey) togglePick(n); else if (selected) select(n, true); else openPop(n); })
      .on('dblclick', (e, n) => { e.stopPropagation(); openWorkspace(picked.has(n.id) && picked.size > 1 ? [...picked] : [n.id]); })
      .on('keydown', (e, n) => { if (e.key === 'Enter'){ e.preventDefault(); e.shiftKey ? togglePick(n) : select(n, true); } })
      .on('mouseenter', (e, n) => { hoverId = n.id; paint(); })
@@ -664,6 +758,7 @@ function tick(){
   tickSel.attr('x', id => byId.get(id).x).attr('y', id => byId.get(id).y + (byId.get(id).dir === 1 ? -24 : 34));
   const cur = nodes[step]; L.ring.attr('cx', cur.x).attr('cy', cur.y);
   L.spot.selectAll('circle').attr('cx', n => n.x).attr('cy', n => n.y);
+  placePop();
   L.spot.selectAll('path').attr('d', n => { const p = byId.get(parentOf[n.id]); return p && !n.loose ? `M${n.x},${n.y}L${p.x},${p.y}` : null; });
   placeCallout();
 }
@@ -688,13 +783,14 @@ function cardHTML(n){
 }
 let wsHoverIds = null, spot = null;
 function paint(){
-  const lit = spot ? spot.ids : wsHoverIds ? new Set(wsHoverIds) : hoverId && adj.has(hoverId) ? new Set([hoverId, ...adj.get(hoverId)]) : null;
+  const lit = spot ? spot.ids : hlSet ? new Set([...hlSet, ...(hoverId ? [hoverId] : [])]) : wsHoverIds ? new Set(wsHoverIds) : hoverId && adj.has(hoverId) ? new Set([hoverId, ...adj.get(hoverId)]) : null;
   nodeSel.attr('display', n => shown(n) && !farHidden(n) ? null : 'none')
-    .classed('sel', n => !!selected && selected.id === n.id)
+    .classed('sel', n => (!!selected && selected.id === n.id) || (!!popNode && popNode.id === n.id))
     .classed('picked', n => picked.has(n.id))
     .classed('lit', n => !!lit && lit.has(n.id))
     .classed('fade', n => !!lit && !lit.has(n.id))
-    .classed('spot', n => !!spot && spot.ids.has(n.id));
+    .classed('spot', n => !!spot && spot.ids.has(n.id))
+    .classed('hl', n => !spot && !!hlSet && hlSet.has(n.id));
   nebSel.attr('display', n => shown(n) ? null : 'none');
   edgeSel.attr('display', l => shown(l.target) && !farHidden(l.target) && !(mode === 'timeline' && l.target.d === 1) ? null : 'none')
     .attr('opacity', l => lit && !(lit.has(l.source.id) && lit.has(l.target.id)) ? .2 : 1);
@@ -718,11 +814,11 @@ const zoom = d3.zoom().scaleExtent([.15, 4]).on('zoom', e => {
   }
   L.nodes.selectAll('.lbl.t0, .lbl.t1').attr('font-size', n => (n.d === 0 ? 11.5 : 10.5) / Math.min(K, 1.2));
   L.nodes.selectAll('.fbadge').attr('transform', n => `translate(${n.r + 3},${-n.r - 3}) scale(${1 / Math.min(K, 1)})`);
-  placeCallout();
+  placeCallout(); placePop();
   tickSel.attr('font-size', 8 / Math.min(K, 1));
 });
 svg.call(zoom).on('dblclick.zoom', null);
-svg.on('click', () => { if (selected) closePanel(); });
+svg.on('click', () => { if (selected) closePanel(); closePop(); });
 document.body.dataset.zoom = lvl;
 function viewport(){ const open = document.body.classList.contains('panel-open'), narrow = innerWidth <= 760; return {W: innerWidth - (open && !narrow ? 362 : 0), H: innerHeight - (open && narrow ? innerHeight * .6 : 0)}; }
 function fitTo(list, {maxK = .7, dur = 700} = {}){
@@ -748,6 +844,7 @@ function dMove(e, n){
   if (n.type === 'file' && !n.pageOf && n._moved) refileMove(e, n);   // dropped files can be re-filed by dragging
 }
 function dEnd(e, n){ if (!e.active) sim.alphaTarget(0); if (n.type === 'file' && !n.pageOf && n._moved) refileEnd(n); }
+$('undoBtn').onclick = () => undo();
 $('tidyBtn').onclick = () => { nodes.forEach(n => { n.fx = null; n.fy = null; }); applyPins(); reflow(.6); };
 
 // ---------- modes ----------
@@ -792,7 +889,7 @@ function play(){
   $('playIcon').setAttribute('d', 'M6 4h4v16H6zM14 4h4v16h-4z'); $('play').setAttribute('aria-label', 'Pause replay');
   $('status').innerHTML = '<span class="live">listening</span> · replay';
   if (step >= N - 1){ nodes.forEach(n => { n.fx = null; n.fy = null; }); setStep(0); fitTo(nodes.filter(n => n.d < 3)); }
-  timer = setInterval(() => { if (step >= N - 1) return stop(); setStep(step + 1, true); }, RM ? 400 : 1100);
+  timer = setInterval(() => { if (step >= N - 1){ stop(); toast('brainstorm mapped', {label: 'see next steps →', fn: openPlan}); return; } setStep(step + 1, true); }, RM ? 400 : 1100);
 }
 function stop(){
   playing = false; clearInterval(timer); document.body.classList.remove('playing');
@@ -804,7 +901,7 @@ $('scrub').addEventListener('input', () => { if (playing) stop(); const v = +$('
 
 // ---------- panel ----------
 const panel = $('panel');
-function select(n, move){ selected = n; renderPanel(n); panel.hidden = false; document.body.classList.add('panel-open'); paint(); if (move) centerOn(n, Math.max(K, n.d <= 1 ? .95 : 1.6)); }
+function select(n, move){ closePop(); closePlan(); selected = n; renderPanel(n); panel.hidden = false; document.body.classList.add('panel-open'); paint(); if (move) centerOn(n, Math.max(K, n.d <= 1 ? .95 : 1.6)); }
 function closePanel(){ selected = null; panel.hidden = true; document.body.classList.remove('panel-open'); paint(); }
 function renderPanel(n){
   const kids = n.children.map(id => byId.get(id)).filter(c => c.i <= step);
@@ -861,7 +958,7 @@ function renderPanel(n){
       <div class="actions"><button class="ghost" type="button" data-unfile>remove from map</button></div>`;
     return;
   }
-  const typeLabel = {hub: n.d === 0 ? 'whole conversation' : 'theme', idea: 'idea', question: 'question', task: 'to-do', ref: 'reference'}[n.type];
+  const typeLabel = n.type === 'hub' ? (n.d === 0 ? 'whole conversation' : 'theme') : TYPE_NAME[n.type];
   const mw = kids.reduce((a, k) => Math.max(a, k.w), 1), mix = mixOf(n);
   const kidRow = k => `<button class="row brow" type="button" data-go="${k.id}" style="--c:${k.color}">${typeIcon(k.type, k.color)}<span>${esc(k.label)}</span><span class="meter" aria-hidden="true"><i style="width:${Math.max(6, Math.round(k.w / mw * 100))}%"></i></span></button>`;
   panel.innerHTML = `${head}
@@ -895,17 +992,18 @@ panel.addEventListener('click', e => {
   if (b.hasAttribute('data-close')) return closePanel();
   if (b.dataset.wsopen) return openWsKey(b.dataset.wsopen);
   if (b.hasAttribute('data-suggest')) return suggestFor(selected, b);
-  if (b.hasAttribute('data-keep')){ MAP.data[selected.id].ai = false; rebuild(); toast('kept on the map'); return; }
+  if (b.hasAttribute('data-keep')){ checkpoint('keep suggestion'); MAP.data[selected.id].ai = false; rebuild(); toast('kept on the map'); return; }
   if (b.dataset.file){ const f = byId.get(b.dataset.file); if (f){ select(f, false); focusDrop([f.id], parentOf[f.id]); } return; }
   if (b.hasAttribute('data-unfoldpdf')) return unfoldPdf(selected, b);
-  if (b.hasAttribute('data-droppages')){ dropPages(selected.id); rebuild(); toast('pages removed'); return; }
+  if (b.hasAttribute('data-droppages')){ checkpoint('remove pages'); dropPages(selected.id); rebuild(); toast('pages removed'); return; }
   if (b.hasAttribute('data-unfile')){
-    dropPages(selected.id); idb.del(selected.id);
+    checkpoint('remove ' + selected.label); dropPages(selected.id);
     const id = selected.id, p = parentOf[id], kids = MAP.data[id].children;
     MAP.data[p].children = MAP.data[p].children.flatMap(c => c === id ? kids : [c]); delete MAP.data[id];
-    selected = null; rebuild(); toast('removed from the map'); return;
+    selected = null; rebuild(); toast('removed from the map', {label: 'undo', fn: undo}); return;
   }
   if (b.hasAttribute('data-dismiss')){
+    checkpoint('dismiss suggestion');
     const id = selected.id, p = parentOf[id];
     MAP.data[p].children = MAP.data[p].children.filter(c => c !== id); delete MAP.data[id];
     selected = byId.get(p); rebuild(); return;
@@ -917,14 +1015,28 @@ panel.addEventListener('click', e => {
 });
 
 // ---------- legend + type filters ----------
+// filter chips light up every node of that type (others dim); several can be on at once
+const FILTERS = [...TYPES, ['quote', 'quotes']];
+const hlTypes = new Set();
+const matchesHl = n => n.d > 0 && ((hlTypes.has('quote') && !!n.quote) || hlTypes.has(n.type));
+let hlSet = null;
 function refreshLegend(){
-  const c = {}; nodes.forEach(n => { if (n.type !== 'hub') c[n.type] = (c[n.type] || 0) + 1; });
-  $('tchips').innerHTML = TYPES.map(([t, name]) => `<button type="button" class="tchip" data-type="${t}" aria-pressed="${shownTypes.has(t)}">${typeIcon(t, '#b4c3d6')}${name}<span>${c[t] || 0}</span></button>`).join('');
+  const c = {quote: 0}; nodes.forEach(n => { if (n.type !== 'hub') c[n.type] = (c[n.type] || 0) + 1; if (n.quote && n.d > 0) c.quote++; });
+  [...hlTypes].forEach(t => { if (!c[t]) hlTypes.delete(t); });
+  hlSet = hlTypes.size ? new Set(nodes.filter(matchesHl).map(n => n.id)) : null;
+  $('tchips').innerHTML = FILTERS.filter(([t]) => c[t]).map(([t, name]) => `<button type="button" class="tchip" data-type="${t}" aria-pressed="${hlTypes.has(t)}">${typeIcon(t, t === 'quote' || t === 'suggestion' ? '#8be2ea' : '#b4c3d6', 11)}${name}<span>${c[t]}</span></button>`).join('')
+    + (hlTypes.size ? `<button type="button" class="tchip clear" data-clear>clear</button>` : '');
 }
 $('tchips').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return;
-  const t = b.dataset.type; shownTypes.has(t) ? shownTypes.delete(t) : shownTypes.add(t);
-  refreshLegend(); reflow(.3); paint(); tick();
+  if (b.hasAttribute('data-clear')) hlTypes.clear();
+  else { const t = b.dataset.type; hlTypes.has(t) ? hlTypes.delete(t) : hlTypes.add(t); }
+  refreshLegend(); endSpot(); paint(); tick();
+  if (hlSet && hlSet.size){
+    const list = nodes.filter(n => hlSet.has(n.id) && shown(n));
+    folded.clear(); reflow(.2);
+    fitTo(list.map(n => ({x: n.x, y: n.y})), {maxK: Math.max(K, .5), dur: 600});   // pan/zoom out only as much as needed to show them all
+  }
 });
 
 // ---------- rebuild in place (after AI suggestions are added, kept or dismissed) ----------
@@ -944,6 +1056,7 @@ function rebuild(){
   svg.call(zoom.transform, d3.zoomTransform(svg.node()));
   setStep(N - 1);
   if (selected) renderPanel(selected); else closePanel();
+  if (popNode){ const pn = byId.get(popNode.id); if (pn){ popNode = pn; renderPop(pn); } else closePop(); }
   store.set('neura-map', MAP);
 }
 async function suggestFor(n, btn){
@@ -969,10 +1082,202 @@ Reply with ONLY a JSON array of 3 objects: {"label": string (at most 7 words), "
             {label: 'What is the strongest objection?', kind: 'Question', detail: 'A starting prompt for pressure-testing this idea.'}];
   }
   if (!list.length){ btn.disabled = false; btn.textContent = '✦ suggest follow-ups'; return toast('No suggestions this time. Try again.'); }
+  checkpoint('add suggestions');
   list.forEach((s, i) => { const id = 'ai_' + Date.now().toString(36) + i; MAP.data[id] = {label: s.label, kind: s.kind, detail: s.detail, quote: '', children: [], ai: true}; MAP.data[n.id].children.push(id); });
   folded.delete(n.id); shownTypes.add('suggestion');
   rebuild(); toast(`${list.length} suggestions added around “${n.label}”`);
 }
+
+// ---------- node pop-up: what's in it, its quotes, what it connects to ----------
+let popNode = null;
+function openPop(n){
+  if (innerWidth <= 760) return select(n, true);   // phones get the bottom sheet instead
+  endSpot(); closePlan(); popNode = n; renderPop(n); $('pop').hidden = false; paint(); placePop();
+  $('pop').querySelector('.close')?.focus({preventScroll: true});
+}
+function closePop(){ if (!popNode) return; popNode = null; $('pop').hidden = true; paint(); }
+function quotesFor(n){
+  const out = []; if (n.quote) out.push({q: n.quote, from: null});
+  (function w(id){ byId.get(id).children.forEach(c => { const k = byId.get(c); if (!k) return; if (k.quote && out.length < 5) out.push({q: k.quote, from: k}); w(c); }); })(n.id);
+  return out;
+}
+function renderPop(n){
+  const par = parentOf[n.id] ? byId.get(parentOf[n.id]) : null, f = n.file;
+  const links = cross.filter(l => l.source === n || l.target === n).map(l => l.source === n ? l.target : l.source);
+  const kids = n.children.map(id => byId.get(id)).filter(Boolean), qs = quotesFor(n), theme = byId.get(n.theme);
+  const tag = c => `<button type="button" data-go="${c.id}">${typeIcon(c.type, c.color, 9)}${esc(c.label)}</button>`;
+  const pop = $('pop'); pop.style.setProperty('--c', n.color);
+  pop.innerHTML = `<div class="pp-head">${typeIcon(n.type, n.color, 12)}<span class="pp-type">${n.type === 'hub' ? (n.d === 0 ? 'conversation' : 'theme') : TYPE_NAME[n.type]}</span>${theme && theme !== n ? `<span class="pp-theme">· ${esc(theme.label)}</span>` : ''}<button class="close" type="button" aria-label="Close" data-close>×</button></div>
+    <h3>${esc(n.label)}</h3>
+    <p class="pp-meta">${esc(String(n.kind || '').toLowerCase())}${n.d > 0 ? ` · thought #${String(n.i + 1).padStart(2,'0')} of ${N}` : ''}${n.desc ? ` · ${n.desc} inside` : ''}</p>
+    ${f?.img ? `<img class="pp-img" src="${esc(f.img)}" alt="">` : ''}
+    ${n.detail ? `<p class="pp-body">${esc(n.detail)}</p>` : ''}
+    ${f?.url ? `<a class="go" href="${esc(f.url)}" target="_blank" rel="noopener noreferrer" style="text-decoration:none;align-self:flex-start">open link ↗</a>` : ''}
+    ${qs.length ? `<div class="pp-sec"><h4>quotes · ${qs.length}</h4>${qs.map(q => `<blockquote>“${esc(q.q)}”${q.from ? `<cite data-go="${q.from.id}">— from ${esc(q.from.label)}</cite>` : ''}</blockquote>`).join('')}</div>` : ''}
+    ${kids.length ? `<div class="pp-sec"><h4>inside · ${n.desc}</h4><div style="--c:${n.color}">${mixBar(mixOf(n), 'mix')}</div><div class="pp-tags">${kids.slice(0, 8).map(tag).join('')}${kids.length > 8 ? `<span class="pp-meta" style="margin:0">+${kids.length - 8} more</span>` : ''}</div></div>` : ''}
+    ${par || links.length ? `<div class="pp-sec"><h4>connected to</h4><div class="pp-tags">${[...(par ? [par] : []), ...links].map(tag).join('')}</div></div>` : ''}
+    <div class="pp-actions"><button class="go" type="button" data-more>all details →</button>${n.d > 0 ? `<button class="ghost" type="button" data-wsgo>workspace</button>` : ''}</div>`;
+}
+function placePop(){
+  const pop = $('pop'); if (!popNode || pop.hidden) return;
+  const t = d3.zoomTransform(svg.node()), n = popNode, sx = t.applyX(n.x), sy = t.applyY(n.y), r = (lvl === 'near' ? 84 : n.r) * t.k;
+  const w = pop.offsetWidth, h = pop.offsetHeight;
+  let left = sx + r + 14; if (left + w > innerWidth - 16) left = sx - r - 14 - w; left = Math.max(16, left);
+  const top = Math.min(Math.max(sy - 46, 110), innerHeight - h - 16);
+  pop.style.left = Math.round(left) + 'px'; pop.style.top = Math.round(Math.max(16, top)) + 'px';
+}
+$('pop').addEventListener('click', e => {
+  const b = e.target.closest('button, cite'); if (!b || !popNode) return;
+  const n = popNode;
+  if (b.hasAttribute('data-close')) return closePop();
+  if (b.hasAttribute('data-more')) return select(n, false);
+  if (b.hasAttribute('data-wsgo')){ closePop(); return openWorkspace([n.id]); }
+  if (b.dataset.go){ const m = byId.get(b.dataset.go); if (m){ if (hiddenByFold(m)){ folded.clear(); reflow(.4); } openPop(m); centerOn(m, Math.max(K, .9)); } }
+});
+
+// ---------- next steps: a checklist that breaks the session into small doable steps ----------
+const planKey = () => 'neura-plan:' + MAP.id;
+let plan = null;
+const STEP_FOR = c => c.type === 'question' ? [`Answer: ${c.label}`, 20] : c.type === 'ref' ? [`Look at ${c.label}: note 2 things to borrow, 1 to avoid`, 30]
+  : c.type === 'example' ? [`Pull 2 lessons from ${c.label}`, 20] : c.type === 'file' ? [`Read “${c.label}” and pull out 3 takeaways`, 25] : c.type === 'task' ? [c.label, 45] : [`Sketch: ${c.label}`, 30];
+function makePlan(){
+  const tasks = [], used = new Set(), real = nodes.filter(n => n.d > 0 && n.type !== 'suggestion' && !n.pageOf);
+  const add = (title, why, src, steps) => { if (steps.length) tasks.push({id: 't' + tasks.length, title, why, src: src.map(n => n.id), steps: steps.slice(0, 6).map(([t, m]) => ({t, m}))}); };
+  // 1. what the team said it should do
+  real.filter(n => n.type === 'task').slice(0, 3).forEach(n => {
+    const kids = n.children.map(id => byId.get(id)).filter(c => c && !c.pageOf);
+    kids.forEach(k => used.add(k.id)); used.add(n.id);
+    const steps = kids.map(c => c.type === 'idea' ? [`Work out: ${c.label}`, 30] : STEP_FOR(c));
+    if (steps.length < 3) steps.push(['Write down what “done” looks like', 10], ['Make a rough first version', 60], ['Share it with the team for feedback', 15]);
+    add(n.label, n.detail, [n], steps);
+  });
+  // 2. the core idea, as a prototype
+  const core = real.find(n => /main concept/i.test(n.kind)) || real.filter(n => n.d === 1).sort((a, b) => b.desc - a.desc)[0];
+  if (core){
+    const parts = core.children.map(id => byId.get(id)).filter(c => c && !c.file && !used.has(c.id)).slice(0, 4);
+    add(`Prototype the ${core.label.toLowerCase()}`, core.detail, [core, ...parts],
+      [...parts.map(p => [`Sketch how “${p.label}” works`, 45]), ['Stitch the sketches into one clickable mock', 60], ['Test it with 2 people; note where they get stuck', 30]]);
+  }
+  // 3. open questions
+  const qs = real.filter(n => n.type === 'question' && !used.has(n.id)).slice(0, 5);
+  add('Answer the open questions', 'These came up but weren’t settled. Each answer unblocks a decision.', qs, qs.map(STEP_FOR));
+  // 4. research
+  const refs = real.filter(n => (n.type === 'ref' || n.type === 'example' || n.type === 'file') && !used.has(n.id)).slice(0, 5);
+  add('Do the quick research', 'Look at what was mentioned before building, so you copy what works.', refs, refs.map(STEP_FOR));
+  return tasks.slice(0, 6);
+}
+function savePlan(){ store.set(planKey(), plan); }
+function openPlan(){
+  closePop(); if (selected) closePanel(); endSpot();
+  plan = store.get(planKey()); if (!plan || !plan.tasks){ plan = {by: 'map', tasks: makePlan(), done: {}}; savePlan(); }
+  renderPlan(); $('plan').hidden = false; document.body.classList.add('plan-open'); $('planBtn').setAttribute('aria-pressed', 'true');
+}
+function closePlan(){ if ($('plan').hidden) return; $('plan').hidden = true; document.body.classList.remove('plan-open'); $('planBtn').setAttribute('aria-pressed', 'false'); }
+$('planBtn').onclick = () => $('plan').hidden ? openPlan() : closePlan();
+function aiAvailable(){ return !!sample || !!store.get('neura-or-key'); }
+function renderPlan(msg, busy){
+  const all = plan.tasks.flatMap(t => t.steps.map((_, si) => `${t.id}:${si}`)), done = all.filter(k => plan.done[k]).length;
+  const mins = plan.tasks.reduce((a, t) => a + t.steps.reduce((b, st, si) => b + (plan.done[`${t.id}:${si}`] ? 0 : (+st.m || 0)), 0), 0);
+  const srcOf = t => (t.src || []).filter(id => byId.has(id));
+  $('plan').innerHTML = `<div class="p-head"><span class="tag">✓ next steps</span><button class="close" type="button" data-pclose aria-label="Close next steps"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+    <h2>${esc(MAP.title)}</h2>
+    <p class="pl-sub">${plan.tasks.length} tasks · ${done}/${all.length} steps done${mins ? ` · about ${mins >= 60 ? Math.round(mins / 6) / 10 + ' h' : mins + ' min'} left` : ''} · ${plan.by === 'ai' ? `written by AI${plan.model ? ' (' + esc(plan.model.split('/').pop()) + ')' : ''}` : 'built from the map'}</p>
+    <div class="pl-prog" aria-hidden="true"><i style="width:${all.length ? Math.round(done / all.length * 100) : 0}%"></i></div>
+    <div class="pl-tools">
+      <button class="go" type="button" data-pai ${busy ? 'disabled' : ''}>${busy ? '✦ writing…' : '✦ break it down with AI'}</button>
+      <button class="ghost" type="button" data-pcopy>copy checklist</button>
+      <button class="ghost" type="button" data-premake>rebuild from map</button>
+    </div>
+    ${msg ? `<p class="${busy ? 'progress' : 'err'}">${busy ? '<span class="spin" aria-hidden="true"></span>' : ''}<span>${esc(msg)}</span></p>` : ''}
+    ${plan.tasks.length ? plan.tasks.map(t => {
+      const tk = t.steps.map((_, si) => `${t.id}:${si}`), td = tk.filter(k => plan.done[k]).length;
+      return `<div class="pl-task ${td === tk.length ? 'done' : ''}"><h3>${esc(t.title)}<span>${td}/${tk.length}</span></h3>
+        ${t.why ? `<p class="pl-why">${esc(t.why)}</p>` : ''}
+        <ul class="pl-steps">${t.steps.map((st, si) => `<li><label><input type="checkbox" data-step="${t.id}:${si}" ${plan.done[`${t.id}:${si}`] ? 'checked' : ''}><span>${esc(st.t)}</span>${st.m ? `<small>${st.m}m</small>` : ''}</label></li>`).join('')}</ul>
+        ${srcOf(t).length ? `<div class="pl-src">${srcOf(t).slice(0, 4).map(id => { const n = byId.get(id); return `<button type="button" data-psrc="${id}">${typeIcon(n.type, n.color, 9)}${esc(n.label)}</button>`; }).join('')}</div>` : ''}
+      </div>`; }).join('') : `<p class="body-text" style="color:var(--muted)">There isn’t enough on the map yet to suggest steps. Add actions, questions or ideas first.</p>`}
+    <details class="pl-key"><summary>AI settings</summary>
+      <span>${sample ? 'Using Claude inside this page.' : 'To write the plan with AI here, paste an <b style="color:var(--fg)">OpenRouter</b> key. It’s saved only in this browser and sent only to openrouter.ai. Never put a key in the code: this page is public.'}</span>
+      ${sample ? '' : store.get('neura-or-key') ? `<div class="row2"><span style="flex:1">key saved in this browser ✓</span><button class="ghost" type="button" data-pkeydel>remove key</button></div>`
+        : `<div class="row2"><input type="password" id="orKey" placeholder="sk-or-…" autocomplete="off" aria-label="OpenRouter key"><button class="ghost" type="button" data-pkeysave>save</button></div>`}
+    </details>`;
+}
+$('plan').addEventListener('change', e => {
+  const k = e.target.dataset?.step; if (!k) return;
+  if (e.target.checked) plan.done[k] = true; else delete plan.done[k];
+  savePlan(); const scroll = $('plan').scrollTop; renderPlan(); $('plan').scrollTop = scroll;
+  if (e.target.checked && plan.tasks.every(t => t.steps.every((_, si) => plan.done[`${t.id}:${si}`]))) toast('every step done ✓');
+});
+$('plan').addEventListener('click', async e => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.hasAttribute('data-pclose')) return closePlan();
+  if (b.dataset.psrc){ const n = byId.get(b.dataset.psrc); if (!n) return; if (innerWidth <= 760) closePlan(); return focusDrop([n.id], parentOf[n.id], {ms: 4000}); }
+  if (b.hasAttribute('data-premake')){ plan = {by: 'map', tasks: makePlan(), done: {}}; savePlan(); renderPlan(); return toast('plan rebuilt from the map'); }
+  if (b.hasAttribute('data-pcopy')){
+    const md = `# Next steps: ${MAP.title}\n\n` + plan.tasks.map(t => `## ${t.title}\n${t.why ? t.why + '\n' : ''}` + t.steps.map((st, si) => `- [${plan.done[`${t.id}:${si}`] ? 'x' : ' '}] ${st.t}${st.m ? ` (${st.m} min)` : ''}`).join('\n')).join('\n\n');
+    try { await navigator.clipboard.writeText(md); toast('checklist copied'); } catch (err) { toast('Couldn’t copy. Your browser blocked the clipboard.'); }
+    return;
+  }
+  if (b.hasAttribute('data-pkeysave')){ const v = $('orKey').value.trim(); if (!/^sk-or-/.test(v)) return toast('That doesn’t look like an OpenRouter key (it starts with sk-or-).'); store.set('neura-or-key', v); renderPlan(); return toast('key saved in this browser'); }
+  if (b.hasAttribute('data-pkeydel')){ store.del('neura-or-key'); renderPlan(); return toast('key removed'); }
+  if (b.hasAttribute('data-pai')){
+    if (!aiAvailable()){ $('plan').querySelector('.pl-key').open = true; return toast('Add an OpenRouter key in AI settings first.'); }
+    renderPlan('reading the map and writing small steps…', true);
+    try {
+      const real = nodes.filter(n => n.d > 0 && n.type !== 'suggestion' && !n.pageOf);
+      const prompt = `You turn a team's brainstorm map into a short, practical action plan. Break big work into small steps one person can finish in under an hour.
+Reply with ONLY JSON: {"tasks":[{"title": string (at most 8 words), "why": one plain sentence, "source": [ids of map nodes it comes from], "steps": [{"text": string starting with a verb, at most 14 words, "minutes": number}]}]}
+Rules: 4 to 6 tasks, ordered by what to do first. 3 to 6 steps each. Be specific to this map, not generic advice. Use the team's own words where possible.
+Map title: ${MAP.title}
+Nodes (id | type | label | summary | parent):
+${real.map(n => `${n.id} | ${TYPE_NAME[n.type] || 'theme'} | ${n.label} | ${String(n.detail || '').slice(0, 140)} | ${parentOf[n.id] || ''}`).join('\n')}`;
+      const j = await askAI(prompt);
+      const tasks = (j?.tasks || []).filter(t => t && t.title && Array.isArray(t.steps)).slice(0, 6).map((t, i) => ({id: 'a' + i, title: String(t.title).slice(0, 80), why: String(t.why || '').slice(0, 240),
+        src: (Array.isArray(t.source) ? t.source : []).map(String).filter(id => byId.has(id)).slice(0, 4),
+        steps: t.steps.filter(st => st && (st.text || typeof st === 'string')).slice(0, 7).map(st => ({t: String(st.text || st).slice(0, 140), m: Math.min(240, Math.max(0, Math.round(+st.minutes || 0)))}))})).filter(t => t.steps.length);
+      if (!tasks.length) throw new Error('The AI reply had no usable tasks. Try again.');
+      plan = {by: 'ai', model: askAI.model || '', tasks, done: {}}; savePlan(); renderPlan(); toast('plan written by AI');
+    } catch (err) { renderPlan(err?.message || 'Something went wrong. Try again.'); }
+  }
+});
+async function pickModel(){
+  if (pickModel.m) return pickModel.m;
+  try { const j = await (await fetch('https://openrouter.ai/api/v1/models')).json();
+    const c = (j.data || []).filter(m => /^anthropic\/claude.*sonnet/.test(m.id)).sort((a, b) => (b.created || 0) - (a.created || 0));
+    pickModel.m = c[0]?.id || (j.data || []).find(m => /^anthropic\//.test(m.id))?.id; } catch (e) {}
+  return pickModel.m || 'anthropic/claude-sonnet-4';
+}
+async function askAI(prompt){
+  if (sample){ askAI.model = 'claude'; return sample.json(prompt, {}); }
+  const key = store.get('neura-or-key'); if (!key) throw new Error('Add an OpenRouter key in AI settings first.');
+  const model = await pickModel(); askAI.model = model;
+  const r = await fetch('https://openrouter.ai/api/v1/chat/completions', {method: 'POST',
+    headers: {'Authorization': 'Bearer ' + key, 'Content-Type': 'application/json', 'X-Title': 'Neura'},
+    body: JSON.stringify({model, messages: [{role: 'user', content: prompt}], max_tokens: 3000, temperature: .4})});
+  if (!r.ok) throw new Error(r.status === 401 ? 'OpenRouter rejected that key. Check it in AI settings.' : r.status === 402 ? 'Your OpenRouter account is out of credits.' : r.status === 429 ? 'Too many requests. Try again in a minute.' : `OpenRouter error ${r.status}. Try again.`);
+  const txt = (await r.json()).choices?.[0]?.message?.content || '';
+  const m = txt.match(/\{[\s\S]*\}/); if (!m) throw new Error('The AI reply wasn’t usable. Try again.');
+  return JSON.parse(m[0]);
+}
+
+// ---------- undo ----------
+// every change to the map takes a snapshot first; undo puts the last one back
+const history = [];
+function checkpoint(label){ history.push({label, map: structuredClone(MAP)}); if (history.length > 40) history.shift(); syncUndo(); }
+function syncUndo(){ const b = $('undoBtn'); if (!b) return; b.disabled = !history.length; b.title = history.length ? `Undo ${history[history.length - 1].label} (⌘Z / Ctrl+Z)` : 'Nothing to undo'; }
+function undo(){
+  const h = history.pop(); syncUndo();
+  if (!h) return toast('Nothing to undo');
+  endSpot?.();
+  if (h.map.id !== MAP.id){ store.set('neura-map', h.map); loadMap(h.map); }
+  else { MAP = h.map; rebuild(); }
+  toast(`undid ${h.label}`);
+}
+addEventListener('keydown', e => {
+  if (!(e.metaKey || e.ctrlKey) || e.shiftKey || e.key.toLowerCase() !== 'z') return;
+  if (e.target.closest?.('input, textarea, [contenteditable]') || !$('ws').hidden) return;
+  e.preventDefault(); undo();
+});
 
 // ---------- load a map ----------
 function loadMap(map, {fresh} = {}){
@@ -1114,7 +1419,8 @@ function drawDrop(z, what, cx, cy, overMap = true){
     hud.innerHTML = !overMap ? `<span>drop on the map, not the toolbar</span>`
       : tgt ? `<span class="dot"></span><span>attach to <b>${esc(tgt.label)}</b></span>`
       : tid ? `<span class="dot"></span><span>add to cloud <b>${esc(byId.get(tid).label)}</b></span>`
-      : `<span class="dot"></span><span><b>leave loose</b> <small>· sort it later</small></span>`;
+      : z?.loose || !what ? `<span class="dot"></span><span><b>leave loose</b> <small>· sort it later</small></span>`
+      : `<span class="dot"></span><span><b>✦ let neura sort it</b> <small>· hold ⌥/Alt to leave loose</small></span>`;
     const r = hud.getBoundingClientRect();
     hud.style.left = Math.min(cx + 16, innerWidth - r.width - 8) + 'px'; hud.style.top = Math.min(cy + 18, innerHeight - r.height - 8) + 'px';
   }
@@ -1136,9 +1442,10 @@ addEventListener('dragover', e => {
   if (!isExternal(e)) return; e.preventDefault();
   if (busyElsewhere()) return;
   e.dataTransfer.dropEffect = overMap(e) ? 'copy' : 'none';
-  dzEvt = {x: e.clientX, y: e.clientY, map: overMap(e), what: dragSummary(e.dataTransfer)};
+  dzEvt = {x: e.clientX, y: e.clientY, map: overMap(e), what: dragSummary(e.dataTransfer), alt: e.altKey};
   if (!dzRaf) dzRaf = requestAnimationFrame(() => { dzRaf = 0; if (!dzEvt) return;
     dz = dzEvt.map ? zoneAt(worldAt(dzEvt.x, dzEvt.y), null, dz) : null;
+    if (dz && dzEvt.alt) dz.loose = true;
     drawDrop(dz || {kind: 'free', p: worldAt(dzEvt.x, dzEvt.y)}, dzEvt.what, dzEvt.x, dzEvt.y, dzEvt.map); });
 });
 addEventListener('dragleave', () => { dragDepth = Math.max(0, dragDepth - 1); if (!dragDepth){ showDrop(false); clearDrop(); dzEvt = null; } });
@@ -1152,6 +1459,7 @@ addEventListener('drop', e => {
   const z = overMap(e) ? zoneAt(worldAt(e.clientX, e.clientY), null, dz) : null;
   clearDrop();
   if (!z) return;
+  if (e.altKey) z.loose = true;
   dropOnMap(files, uri, z);
 });
 function showDrop(on){
@@ -1210,7 +1518,7 @@ async function unfoldPdf(n, btn){
   let r;
   try { r = await readPdfPages(blob); }
   catch (e) { btn.disabled = false; btn.textContent = '▤ unfold into pages'; return toast('Couldn’t read this PDF. It may be password-protected or damaged.'); }
-  dropPages(n.id);
+  checkpoint('unfold pages'); dropPages(n.id);
   r.pages.forEach(p => {
     const id = n.id + '_p' + p.page, first = p.text.split('\n')[0] || '';
     MAP.data[id] = {label: `p.${p.page}${first ? ' · ' + first.slice(0, 28) : ''}`, kind: 'Page', detail: p.text.replace(/\s+/g, ' ').slice(0, 220) || 'No selectable text on this page.',
@@ -1227,6 +1535,35 @@ async function unfoldPdf(n, btn){
   toast(!saved ? 'Pages added, but browser storage is full, so they won’t survive a reload'
     : `${r.pages.length} page${r.pages.length === 1 ? '' : 's'} unfolded${r.total > r.pages.length ? ` (first ${r.pages.length} of ${r.total})` : ''}`);
   const me = byId.get(n.id); if (me){ select(me, false); centerOn(me, Math.max(K, 1.3)); }
+}
+
+// ---------- auto-sort: which thought does this file belong to? ----------
+// Plain TF-IDF word matching against each node's label, summary and quote. Runs instantly, offline, no key.
+const STOP = new Set('the and for are but not you all any can had her was one our out has have this that with they from what when where which while will would there their them then than been into more some such only also just like very about over your its it’s it\'s about because could should these those other how who why use used using make made get got via per new one two'.split(' '));
+const stem = w => w.replace(/(ings|ing|ies|ied|es|ed|s)$/,'').replace(/[’']/g, '');
+function tokens(t){ return String(t || '').toLowerCase().match(/[a-z][a-z’'-]{2,}/g)?.map(stem).filter(w => w.length > 2 && !STOP.has(w)) || []; }
+function bestHome(text){
+  const cands = nodes.filter(n => n.d > 0 && !n.file && !n.loose && n.type !== 'suggestion');
+  if (!cands.length) return null;
+  const docs = cands.map(n => { const tf = new Map(); const add = (t, w) => tokens(t).forEach(k => tf.set(k, (tf.get(k) || 0) + w));
+    add(n.label, 3); add(n.detail, 1); add(n.quote, 1); return {n, tf}; });
+  const df = new Map(); docs.forEach(d => d.tf.forEach((_, k) => df.set(k, (df.get(k) || 0) + 1)));
+  const idf = k => Math.log((docs.length + 1) / ((df.get(k) || 0) + 1)) + .2;
+  const q = new Map(); tokens(text).slice(0, 4000).forEach(k => q.set(k, (q.get(k) || 0) + 1));
+  const qn = Math.sqrt([...q].reduce((a, [k, v]) => a + (v * idf(k)) ** 2, 0)) || 1;
+  let best = null;
+  for (const d of docs){
+    let dot = 0, dn = 0; const hits = [];
+    d.tf.forEach((v, k) => { const w = v * idf(k); dn += w * w; if (q.has(k)){ const c = w * q.get(k) * idf(k); dot += c; hits.push([k, c]); } });
+    const score = dot / (qn * (Math.sqrt(dn) || 1));
+    if (!best || score > best.score) best = {node: d.n, score, hits};
+  }
+  if (!best || best.score < .06 || !best.hits.length) return null;
+  // prefer the theme when the match is spread across its ideas rather than one specific one
+  const words = best.hits.sort((a, b) => b[1] - a[1]).slice(0, 3).map(([k]) => {
+    const m = String(text).toLowerCase().match(new RegExp('\\b' + k.replace(/[^a-z-]/g, '') + '[a-z’\'-]*'));
+    return m ? m[0] : k; });
+  return {node: best.node, score: best.score, terms: [...new Set(words)]};
 }
 
 // read what was dropped into node records
@@ -1282,6 +1619,14 @@ async function dropOnMap(files, uri, z){
   if (files.some(isPdf)) toast('reading PDF…');
   const entries = await readDrop(files, uri);
   if (!entries.length) return toast(uri ? 'Only web links (http/https) can be dropped.' : 'Nothing to add from that drop.');
+  // open space (without ⌥/Alt) = let neura decide: match the content against every thought on the map
+  let why = null;
+  if (z.kind === 'free' && !z.loose){
+    const m = bestHome(entries.map(e => `${e.label} ${e.file?.text || ''} ${e.file?.url ? e.detail : ''}`).join('\n'));
+    if (m){ why = m; z = m.node.d === 1 ? {kind: 'cloud', theme: m.node.id, p: z.p} : {kind: 'node', node: m.node, p: z.p}; }
+    else why = {none: true};
+  }
+  checkpoint(entries.length === 1 ? 'add ' + entries[0].label : `add ${entries.length} files`);
   const made = [], stamp = Date.now().toString(36);
   entries.forEach((en, i) => {
     const id = 'f_' + stamp + i, a = i * 2.4, rr = 16 * Math.sqrt(i), pos = {x: z.p.x + Math.cos(a) * rr, y: z.p.y + Math.sin(a) * rr};
@@ -1301,9 +1646,13 @@ async function dropOnMap(files, uri, z){
   const what = entries.length === 1 ? `“${entries[0].label}”` : `${entries.length} items`;
   const saved = store.set('neura-map', MAP), ids = made.map(m => m[0]), home = z.kind === 'node' ? z.node.id : z.kind === 'cloud' ? z.theme : 'root';
   focusDrop(ids, home);
-  const again = {label: 'show me', fn: () => focusDrop(ids, home)};
+  const acts = [{label: 'show me', fn: () => focusDrop(ids, home)}, {label: 'undo', fn: undo}];
+  const where = z.kind === 'node' ? byId.get(z.node.id).label : z.kind === 'cloud' ? `the ${byId.get(z.theme).label} cloud` : '';
   toast(!saved ? `${what} added, but browser storage is full, so it won’t survive a reload`
-    : z.kind === 'node' ? `${what} attached to ${byId.get(z.node.id).label}` : z.kind === 'cloud' ? `${what} added to the ${byId.get(z.theme).label} cloud` : `${what} left loose`, again);
+    : why?.terms ? `sorted ${what} into ${where} · it mentions ${why.terms.map(t => '“' + t + '”').join(', ')}`
+    : why?.none ? `${what} didn’t clearly match anything, so it’s loose · drag it where it belongs`
+    : z.kind !== 'free' ? `${what} added to ${where}` : `${what} left loose`, acts);
+  if (why?.terms && spot) spot.why = why.terms;
 }
 function flash(ids){
   if (RM) return; const s = new Set(ids);
@@ -1325,23 +1674,24 @@ function focusDrop(ids, parentId, {move = true, ms = 5000} = {}){
   L.spot.selectAll('circle').data(items).join('circle').attr('class','spot-halo').attr('stroke', col).attr('r', n => n.r + 7);
   const co = $('callout'); co.style.setProperty('--cc', col);
   const first = items[0], what = items.length === 1 ? first.label : `${items.length} items`;
-  co.innerHTML = `<b>▤ ${esc(what)}</b><span>${first.loose ? 'loose · drag onto a node to file it' : `<i>→</i> ${par && par.d === 1 ? 'cloud' : 'attached to'} <i>${esc(par ? par.label : '')}</i>`}</span>`;
+  co.innerHTML = !first.file ? `<b>${esc(first.label)}</b><span>${esc(TYPE_NAME[first.type] || 'theme')}${par ? ` · in <i>${esc(par.label)}</i>` : ''}</span>` : `<b>▤ ${esc(what)}</b><span>${first.loose ? 'loose · drag onto a node to file it' : `<i>→</i> ${par && par.d === 1 ? 'cloud' : 'attached to'} <i>${esc(par ? par.label : '')}</i>`}</span><span class="why" hidden></span>`;
   co.hidden = false;
   paint(); tick();
   if (move){
     const pts = [...items, ...(par ? [par] : [])].map(n => ({x: n.fx ?? n.x, y: n.fy ?? n.y}));
-    fitTo(pts, {maxK: Math.max(1.1, Math.min(K, 1.35)), dur: 750});
+    fitTo(pts, {maxK: Math.min(1.35, Math.max(.8, K * 1.45)), dur: 800});   // a gentle zoom toward it, never a jump
   }
   clearTimeout(focusDrop.t); focusDrop.t = setTimeout(endSpot, ms);
 }
 function endSpot(){ if (!spot) return; spot = null; L.spot.selectAll('*').remove(); $('callout').hidden = true; paint(); }
 function placeCallout(){
   const co = $('callout'); if (!spot || co.hidden) return;
+  const w = co.querySelector('.why'); if (w && spot.why && w.hidden){ w.hidden = false; w.innerHTML = '✦ matched ' + spot.why.map(t => `<i>${esc(t)}</i>`).join(', '); }
   const n = spot.items[0], t = d3.zoomTransform(svg.node());
   co.style.left = Math.round(t.applyX(n.x)) + 'px'; co.style.top = Math.round(t.applyY(n.y) - n.r * t.k) + 'px';
 }
 svg.on('pointerdown.spot', () => { if (spot && Date.now() - spot.t0 > 600) endSpot(); });   // any click on the map after it lands dismisses it
-addEventListener('keydown', e => { if (e.key === 'Escape') endSpot(); });
+addEventListener('keydown', e => { if (e.key === 'Escape'){ endSpot(); closePop(); } });
 
 // re-file a dropped item by dragging it: same three zones, the node itself is the ghost
 function refileMove(e, n){
@@ -1355,10 +1705,11 @@ function refileEnd(n){
   const d = MAP.data[n.id], from = parentOf[n.id];
   const to = z.kind === 'node' ? z.node.id : z.kind === 'cloud' ? z.theme : 'root';
   if (to === from && !!d.loose === (z.kind === 'free')){            // same home: just keep the new spot
-    if (d.loose){ d.pin = {x: z.p.x, y: z.p.y}; store.set('neura-map', MAP); }
+    if (d.loose){ checkpoint('move ' + n.label); d.pin = {x: z.p.x, y: z.p.y}; store.set('neura-map', MAP); }
     else if (z.kind === 'node'){ n.fx = null; n.fy = null; reflow(.3); }
     return;
   }
+  checkpoint('move ' + n.label);
   MAP.data[from].children = MAP.data[from].children.filter(c => c !== n.id);
   MAP.data[to].children.push(n.id);
   if (z.kind === 'free'){ d.loose = true; d.pin = {x: z.p.x, y: z.p.y}; } else { delete d.loose; delete d.pin; }
@@ -1368,7 +1719,7 @@ function refileEnd(n){
   if (z.kind === 'cloud'){ m.fx = keep.x; m.fy = keep.y; } else if (z.kind === 'node'){ m.fx = null; m.fy = null; }
   tick(); reflow(.3); flash([n.id, to]);
   focusDrop([n.id], to, {move: false, ms: 3000});
-  toast(z.kind === 'node' ? `moved onto ${byId.get(to).label}` : z.kind === 'cloud' ? `filed under the ${byId.get(to).label} cloud` : 'left loose on the map', {label: 'show me', fn: () => focusDrop([n.id], to)});
+  toast(z.kind === 'node' ? `moved onto ${byId.get(to).label}` : z.kind === 'cloud' ? `filed under the ${byId.get(to).label} cloud` : 'left loose on the map', [{label: 'show me', fn: () => focusDrop([n.id], to)}, {label: 'undo', fn: undo}]);
 }
 $('importBtn').onclick = () => openImport([]);
 $('mapFiles').onchange = e => { openImport(pendingFiles.concat([...e.target.files])); e.target.value = ''; };
@@ -1403,7 +1754,7 @@ $('sheet').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return;
   if (b.hasAttribute('data-pickfiles')) return $('mapFiles').click();
   if (b.hasAttribute('data-cancel')) return closeImport();
-  if (b.hasAttribute('data-reset')){ store.del('neura-map'); loadMap(structuredClone(SAMPLE)); closeImport(); toast('back to the sample session'); return; }
+  if (b.hasAttribute('data-reset')){ checkpoint('reset'); store.del('neura-map'); loadMap(structuredClone(SAMPLE)); closeImport(); toast('back to the sample session'); return; }
   if (b.hasAttribute('data-run')) runImport($('sheet').querySelector('input[name=how]:checked')?.value || 'merge');
 });
 
@@ -1480,7 +1831,7 @@ function toMap(j, source){
   return {id: 'm' + Date.now(), title: String(j.title || 'new session').slice(0, 60), data, cross: crossOut, source};
 }
 function commitMap(m){
-  store.set('neura-map', m); closeImport(); loadMap(m); toast(`map rebuilt · ${N} thoughts across ${THEMES.length} themes`);
+  checkpoint('rebuild map'); store.set('neura-map', m); closeImport(); loadMap(m); toast(`map rebuilt · ${N} thoughts across ${THEMES.length} themes`);
 }
 
 // ======================= saved workspaces =======================
