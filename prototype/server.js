@@ -7,7 +7,7 @@ const path = require('path');
 
 const PORT = +process.env.PORT || 3000;
 const KEY = process.env.OPENROUTER_API_KEY;
-const BASE = 'https://openrouter.ai/api/v1';
+const BASE = process.env.OPENROUTER_BASE || 'https://openrouter.ai/api/v1';
 // Swap models here. Pin exact ids: no ":batch" variants, no "~...-latest" aliases.
 const STT_MODEL = process.env.STT_MODEL || 'deepgram/nova-3';
 const MAP_MODEL = process.env.MAP_MODEL || 'anthropic/claude-haiku-5.5';
@@ -86,21 +86,63 @@ ${context || '(start of session)'}
 
 NEW TEXT:
 ${text}`;
+  // Not every OpenRouter provider accepts every parameter. Try the strictest request first, then
+  // fall back step by step. Whichever mode works is remembered so later calls skip the failures.
+  let lastErr;
+  for (let i = extractMode; i < MODES.length; i++){
+    try {
+      const out = await callModel(MODES[i], user);
+      if (i !== extractMode) console.log(`extract: using "${MODES[i].name}" mode from now on`);
+      extractMode = i;
+      return out;
+    } catch (e) {
+      lastErr = e;
+      if (!e.retryable) throw e;
+      console.warn(`extract: "${MODES[i].name}" mode failed (${e.message.slice(0, 90)}), trying the next one`);
+    }
+  }
+  throw lastErr;
+}
+
+const SCHEMA_HINT = `\n\nReply with ONLY a JSON object, no prose and no code fences, exactly this shape (use [] for empty lists, "" for unchanged fields):
+{"add_themes":[{"id":"","label":"","detail":"","quote":""}],"add_nodes":[{"id":"","parent":"","label":"","kind":"${KINDS.join('|')}","detail":"","quote":""}],"add_links":[{"a":"","b":""}],"update_nodes":[{"id":"","label":"","kind":"","detail":"","quote":""}]}`;
+const MODES = [
+  {name: 'json_schema', body: {response_format: {type: 'json_schema', json_schema: {name: 'map_patch', strict: true, schema: PATCH_SCHEMA}}}},
+  {name: 'json_object', hint: true, body: {response_format: {type: 'json_object'}}},
+  {name: 'plain', hint: true, body: {}}
+];
+let extractMode = 0;
+
+async function callModel(mode, user){
   const r = await fetch(`${BASE}/chat/completions`, {
     method: 'POST', signal: AbortSignal.timeout(45000),
     headers: {Authorization: `Bearer ${KEY}`, 'Content-Type': 'application/json', 'X-Title': 'Neura'},
     body: JSON.stringify({
-      model: MAP_MODEL, temperature: 0.2, max_tokens: 1500,
-      messages: [{role: 'system', content: SYSTEM}, {role: 'user', content: user}],
-      response_format: {type: 'json_schema', json_schema: {name: 'map_patch', strict: true, schema: PATCH_SCHEMA}},
-      provider: {require_parameters: true}
+      model: MAP_MODEL, max_tokens: 1500,
+      messages: [{role: 'system', content: SYSTEM + (mode.hint ? SCHEMA_HINT : '')}, {role: 'user', content: user}],
+      ...mode.body
     })
   });
   const j = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(j?.error?.message || `extraction failed (${r.status})`);
-  const raw = j.choices?.[0]?.message?.content || '{}';
-  const patch = JSON.parse(String(raw).replace(/^```(?:json)?\s*|\s*```$/g, ''));
-  return {...patch, model: j.model, usage: j.usage};
+  if (!r.ok){
+    const msg = j?.error?.message || `extraction failed (${r.status})`;
+    // "No endpoints found that can handle the requested parameters" and other 400/404s → try a simpler request
+    const err = new Error(msg); err.retryable = r.status === 400 || r.status === 404 || /endpoint|parameter|response_format|schema|not supported/i.test(msg);
+    throw err;
+  }
+  let raw = j.choices?.[0]?.message?.content ?? '';
+  if (Array.isArray(raw)) raw = raw.map(p => p?.text || '').join('');
+  const patch = parseJSON(String(raw));
+  if (!patch){ const err = new Error('the model did not return usable JSON'); err.retryable = true; throw err; }
+  for (const k of ['add_themes', 'add_nodes', 'add_links', 'update_nodes']) if (!Array.isArray(patch[k])) patch[k] = [];
+  return {...patch, model: j.model, mode: mode.name, usage: j.usage};
+}
+function parseJSON(s){
+  s = s.replace(/^\s*```(?:json)?\s*|\s*```\s*$/g, '').trim();
+  try { return JSON.parse(s); } catch (e) {}
+  const a = s.indexOf('{'), b = s.lastIndexOf('}');   // models sometimes wrap the JSON in a sentence
+  if (a >= 0 && b > a){ try { return JSON.parse(s.slice(a, b + 1)); } catch (e) {} }
+  return null;
 }
 
 // ---------- http ----------
