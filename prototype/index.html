@@ -225,21 +225,25 @@ blockquote{margin:0;padding:10px 12px;background:var(--surface-2);border-left:2p
 
 /* ---- workspace ---- */
 .ws{position:fixed;inset:0;z-index:20;background:var(--bg);display:flex;flex-direction:column}
-.ws-bar{position:absolute;z-index:3;top:calc(env(safe-area-inset-top,0px) + 14px);left:max(16px, env(safe-area-inset-left,0px));right:max(16px, env(safe-area-inset-right,0px));
-  display:flex;align-items:flex-start;gap:8px;pointer-events:none}
-.ws-bar > *{pointer-events:auto}
-.ws-head{display:flex;align-items:center;gap:6px;padding:5px 14px 5px 5px;min-width:0;max-width:min(720px, calc(100vw - 32px))}
-.ws-back{flex:none;height:34px;padding:0 10px;border:0;border-radius:8px;background:none;cursor:pointer;color:var(--lbl);font-size:12px;font-weight:500;display:inline-flex;align-items:center;gap:6px}
-.ws-back:hover{background:var(--surface-2);color:var(--fg)}
-.ws-back:focus-visible{outline:2px solid var(--accent)}
-.ws-head .sep{width:1px;height:22px;background:var(--line);flex:none;margin-right:6px}
+.ws-bar{position:relative;z-index:3;flex:none;display:flex;align-items:center;gap:12px;
+  padding:calc(env(safe-area-inset-top,0px) + 10px) max(16px, env(safe-area-inset-right,0px)) 10px max(16px, env(safe-area-inset-left,0px));
+  background:var(--paper);border-bottom:1px solid var(--line);box-shadow:0 1px 0 rgba(58,85,230,.08), 0 6px 18px rgba(22,20,40,.06)}
+.ws-bar::before{content:'';position:absolute;left:0;right:0;top:0;height:3px;background:linear-gradient(90deg, var(--coral), var(--violet), var(--accent))}
+.ws-head{display:flex;align-items:center;gap:12px;min-width:0;flex:1}
+.ws-back{flex:none;height:38px;padding:0 14px 0 10px;border:0;border-radius:10px;background:var(--accent);color:#fff;cursor:pointer;font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:7px;box-shadow:0 1px 2px rgba(58,85,230,.25), 0 4px 12px rgba(58,85,230,.25)}
+.ws-back:hover{background:#2b44c9}
+.ws-back:focus-visible{outline:2px solid var(--fg);outline-offset:2px}
+.ws-back kbd{font-family:var(--code);font-size:10px;font-weight:400;padding:1px 5px;border-radius:4px;background:rgba(255,255,255,.18);color:rgba(255,255,255,.9)}
+.ws-head .sep{width:1px;height:28px;background:var(--line);flex:none}
+.ws-kind{flex:none;display:inline-flex;align-items:center;gap:6px;font-family:var(--code);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);background:var(--accent-soft);border-radius:999px;padding:4px 10px 4px 8px}
 .ws-title{display:flex;flex-direction:column;gap:3px;min-width:0}
-.ws-title b{font-size:13px;font-weight:650}
+.ws-title b{font-size:15px;font-weight:650;letter-spacing:-.01em}
 .ws-title span{font-size:10.5px;color:var(--muted);display:flex;gap:5px;flex-wrap:wrap;align-items:center}
 .ws-chip{display:inline-flex;align-items:center;gap:5px;background:var(--surface-2);border-radius:999px;padding:1px 8px;color:var(--lbl)}
 .board{position:relative;flex:1;overflow:hidden;cursor:grab;touch-action:none;
   background-color:var(--bg)}
 .board:active{cursor:grabbing}
+.ws .board{background-color:#f2f3fa;background-image:radial-gradient(circle, rgba(58,85,230,.2) 1.1px, transparent 1.5px);background-size:24px 24px}
 .world{position:absolute;left:0;top:0;transform-origin:0 0}
 .wlinks{position:absolute;left:0;top:0;overflow:visible;pointer-events:none}
 .wlinks path{fill:none;stroke:rgba(58,85,230,.4);stroke-width:1.3;stroke-dasharray:4 5}
@@ -267,7 +271,8 @@ blockquote{margin:0;padding:10px 12px;background:var(--surface-2);border-left:2p
 .fileitem img{width:100%;border-radius:6px;display:block;pointer-events:none}
 .ws-zoom{position:absolute;right:max(16px, env(safe-area-inset-right,0px));bottom:calc(env(safe-area-inset-bottom,0px) + 16px);z-index:3;display:flex;align-items:center;gap:2px;padding:6px}
 .ws .dock{position:absolute}
-.ws-status{margin-left:auto;font-size:11.5px;color:var(--lbl);display:flex;align-items:center;gap:7px;padding:8px 12px;border-radius:10px;background:var(--surface);border:1px solid var(--line)}
+.ws-status{margin-left:auto;font-size:11.5px;color:var(--lbl);display:flex;align-items:center;gap:7px;padding:8px 12px;border-radius:10px;background:var(--surface-2)}
+@media (max-width:760px){.ws-kind{display:none}.ws-back kbd{display:none}.ws-bar{gap:8px}.ws-head{gap:8px}.ws-title b{font-size:13.5px}}
 .ws-status:empty{display:none}
 body.ws-open #dock,body.ws-open .crumb,body.ws-open .hero,body.ws-open .logo,body.ws-open .replay,body.ws-open .zoombox,body.ws-open .tray,body.ws-open .panel,body.ws-open .shelf,body.ws-open .tstrip{display:none}
 
@@ -855,9 +860,10 @@ body.empty-map #planBtn,body.empty-map #selBtn,body.empty-map #tidyBtn,body.empt
 <!-- workspace -->
 <div class="ws" id="ws" hidden>
   <div class="ws-bar">
-    <div class="ws-head glass">
-      <button type="button" class="ws-back" id="wsBack"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>Map</button>
+    <div class="ws-head">
+      <button type="button" class="ws-back" id="wsBack" aria-label="Back to map (Esc)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>Back to map<kbd>Esc</kbd></button>
       <span class="sep"></span>
+      <span class="ws-kind"><span class="wsico" aria-hidden="true"></span>Workspace</span>
       <div class="ws-title"><b id="wsTitle" contenteditable="plaintext-only" spellcheck="false" role="textbox" aria-label="Workspace name">workspace</b><span id="wsFrom"></span></div>
     </div>
     <span class="ws-status" id="wsStatus"></span>
@@ -2528,6 +2534,7 @@ d3.select(board).call(bZoom).on('dblclick.zoom', null);
 function applyBoard(){
   const {x, y, k} = ws.t;
   world.style.transform = `translate(${x}px,${y}px) scale(${k})`;
+  board.style.backgroundSize = `${24 * k}px ${24 * k}px`; board.style.backgroundPosition = `${x}px ${y}px`;
 }
 function wsKey(ids){ return `neura-ws:${MAP.id}:${ids.slice().sort().join(',')}`; }
 function openWorkspace(ids){
