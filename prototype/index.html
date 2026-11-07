@@ -169,7 +169,11 @@ blockquote{margin:0;padding:9px 11px;background:var(--surface-2);border-radius:3
 .linkish{background:none;border:0;padding:0;color:var(--muted);text-decoration:underline;cursor:pointer;font-size:10px;align-self:flex-start}
 .linkish:hover{color:var(--fg)}
 .backdrop{position:fixed;inset:0;z-index:29;background:rgba(0,0,0,.45)}
-.toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 70px);transform:translateX(-50%);z-index:40;padding:8px 12px;font-size:11px;border-color:var(--accent)}
+.toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 70px);transform:translateX(-50%);z-index:40;padding:8px 12px;font-size:11px;border-color:var(--accent);display:flex;align-items:center;gap:10px;max-width:calc(100vw - 32px)}
+.toast[hidden]{display:none}
+.toast-act{all:unset;cursor:pointer;color:var(--accent);font-weight:700;white-space:nowrap;border-left:1px solid var(--line);padding-left:10px}
+.toast-act:hover{text-decoration:underline}
+.toast-act:focus-visible{outline:1.5px solid var(--accent);outline-offset:3px}
 
 /* ---- workspace ---- */
 .ws{position:fixed;inset:0;z-index:20;background:#070b13;display:flex;flex-direction:column}
@@ -311,6 +315,21 @@ body.shelf-open .zoomlvl{display:none}
 .node.file .lbl{fill:#d8e2ef}
 .node.loose .lbl{font-style:italic}
 .node.page .lbl{display:none}
+.node.spot .lbl{display:inline!important;fill:#fff;opacity:1!important}
+.node.spot.file .body{stroke:#fff;stroke-width:2}
+.spot-halo{fill:none;stroke-width:1.6;vector-effect:non-scaling-stroke;pointer-events:none;transform-box:fill-box;transform-origin:center;animation:halo 1.3s ease-out infinite}
+.spot-link{stroke-width:2.4;vector-effect:non-scaling-stroke;pointer-events:none;stroke-dasharray:6 5;animation:march .6s linear infinite}
+.fbadge{cursor:pointer}
+.fbadge rect{fill:rgba(11,17,28,.92);stroke:#c9d4e3;stroke-opacity:.7;stroke-width:1;vector-effect:non-scaling-stroke}
+.fbadge text{font-family:var(--code);font-size:7.5px;fill:#d8e2ef;font-weight:700}
+.fbadge:hover rect{stroke:#fff;stroke-opacity:1}
+body[data-zoom="near"] .fbadge{display:none}
+.callout{position:fixed;z-index:12;pointer-events:none;display:flex;flex-direction:column;gap:2px;padding:6px 9px;font-size:10px;max-width:260px;
+  border-color:var(--cc, var(--accent));box-shadow:0 0 22px color-mix(in srgb, var(--cc, var(--accent)) 35%, transparent);transform:translate(-50%, calc(-100% - 16px))}
+.callout b{font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.callout span{color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.callout span i{font-style:normal;color:var(--cc, var(--accent))}
+.callout::after{content:'';position:absolute;left:50%;bottom:-6px;width:9px;height:9px;transform:translateX(-50%) rotate(45deg);background:inherit;border-right:1px solid var(--cc);border-bottom:1px solid var(--cc)}
 .node.page.lit .lbl,.node.page.sel .lbl{display:inline!important}
 .node.page .fglyph{display:none}
 .node.droptarget .body{stroke:#fff;stroke-width:2.2}
@@ -394,7 +413,8 @@ body.shelf-open .zoomlvl{display:none}
 <section class="sheet glass" id="sheet" hidden role="dialog" aria-modal="true" aria-labelledby="sheetTitle"></section>
 <input type="file" id="mapFiles" multiple accept=".txt,.md,.markdown,.vtt,.srt,.json,.pdf,text/plain,application/pdf" hidden>
 <input type="file" id="pdfAgain" accept=".pdf,application/pdf" hidden>
-<div class="toast glass" id="toast" hidden></div>
+<div class="toast glass" id="toast" hidden role="status"></div>
+<div class="callout glass" id="callout" hidden></div>
 
 <!-- workspace -->
 <div class="ws" id="ws" hidden>
@@ -432,7 +452,11 @@ const store = {
   set(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } },
   del(k){ try { localStorage.removeItem(k); } catch (e) {} }
 };
-function toast(msg){ const t = $('toast'); t.textContent = msg; t.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => t.hidden = true, 3200); }
+function toast(msg, act){
+  const t = $('toast'); t.textContent = msg; t.hidden = false; clearTimeout(toast.t);
+  if (act){ const b = document.createElement('button'); b.type = 'button'; b.className = 'toast-act'; b.textContent = act.label; b.onclick = () => { t.hidden = true; act.fn(); }; t.append(b); }
+  toast.t = setTimeout(() => t.hidden = true, act ? 7000 : 3200);
+}
 
 // Claude in the page (viewer's own account); null where unavailable
 let sample = null;
@@ -546,6 +570,8 @@ function placeRadial(p, a, span, rad){
     c.tx = Math.cos(ca) * rad; c.ty = Math.sin(ca) * rad; placeRadial(c, ca, step * 1.1, rad + 180); });
 }
 const shown = n => n.i <= step && !hiddenByFold(n) && ((n.d <= 1 && !n.file) || shownTypes.has(n.type));
+// zoomed out, deep thoughts hide to keep the overview calm, but dropped files stay visible so they can be found again
+const farHidden = n => lvl === 'far' && n.d >= 3 && !(n.file && !n.pageOf);
 function hiddenByFold(n){ let id = parentOf[n.id]; while (id){ if (folded.has(id)) return true; id = parentOf[id]; } return false; }
 
 // ---------- simulation ----------
@@ -571,7 +597,7 @@ svg.append('defs').append('filter').attr('id','glow').attr('x','-200%').attr('y'
 const gradDefs = svg.select('defs');
 const root = svg.append('g');
 const L = {neb: root.append('g'), ticks: root.append('g'), spine: root.append('path').attr('class','spine'), edges: root.append('g'), cross: root.append('g'),
-  path: root.append('path').attr('class','convpath'), nodes: root.append('g'), ring: root.append('circle').attr('class','ring').attr('r', 6), drop: root.append('g')};
+  path: root.append('path').attr('class','convpath'), nodes: root.append('g'), ring: root.append('circle').attr('class','ring').attr('r', 6), spot: root.append('g'), drop: root.append('g')};
 let nebSel, edgeSel, crossSel, tickSel, nodeSel;
 
 function buildScene(){
@@ -601,12 +627,16 @@ function buildScene(){
     g.append('text').attr('class', n => 'lbl t' + Math.min(n.d, 3)).attr('text-anchor','middle').attr('dy', n => n.r + 11)
       .attr('font-size', n => [10, 9.5, 8.2, 7.2][Math.min(n.d, 3)]).text(n => n.label);
     g.append('g').attr('class','wsg');
+    const fb = g.filter(n => fileKids(n).length).append('g').attr('class','fbadge').attr('role','button').attr('aria-label', n => `${fileKids(n).length} file${fileKids(n).length === 1 ? '' : 's'} attached`);
+    fb.append('rect').attr('rx', 2.5).attr('height', 13).attr('y', -6.5).attr('x', 0).attr('width', n => 22 + String(fileKids(n).length).length * 6);
+    fb.append('text').attr('x', 5).attr('y', 3.4).text(n => '▤ ' + fileKids(n).length);
     const fo = g.append('foreignObject').attr('class','cardfo').attr('x', -84).attr('y', -18).attr('width', 168).attr('height', 200);
     fo.append('xhtml:div').attr('class','card').attr('style', n => `--c:${n.color}`).html(cardHTML);
     g.attr('tabindex', 0).attr('role','button').attr('aria-label', n => n.label);
     g.on('click', (e, n) => {
        e.stopPropagation();
        const door = e.target.closest('[data-ws]'); if (door) return openWsKey(door.getAttribute('data-ws'));
+       if (e.target.closest('.fbadge')){ const fk = fileKids(n); select(n, false); return focusDrop(fk.map(f => f.id), n.id); }
        if (selectMode || e.shiftKey || e.metaKey || e.ctrlKey) togglePick(n); else select(n, true); })
      .on('dblclick', (e, n) => { e.stopPropagation(); openWorkspace(picked.has(n.id) && picked.size > 1 ? [...picked] : [n.id]); })
      .on('keydown', (e, n) => { if (e.key === 'Enter'){ e.preventDefault(); e.shiftKey ? togglePick(n) : select(n, true); } })
@@ -633,6 +663,9 @@ function tick(){
   L.path.attr('d', pp.length > 1 ? curve(pp) : null);
   tickSel.attr('x', id => byId.get(id).x).attr('y', id => byId.get(id).y + (byId.get(id).dir === 1 ? -24 : 34));
   const cur = nodes[step]; L.ring.attr('cx', cur.x).attr('cy', cur.y);
+  L.spot.selectAll('circle').attr('cx', n => n.x).attr('cy', n => n.y);
+  L.spot.selectAll('path').attr('d', n => { const p = byId.get(parentOf[n.id]); return p && !n.loose ? `M${n.x},${n.y}L${p.x},${p.y}` : null; });
+  placeCallout();
 }
 sim.on('tick', tick);
 
@@ -653,16 +686,17 @@ function cardHTML(n){
       ${direct.length ? `<small>workspaces</small>${direct.slice(0, 3).map(w => `<button type="button" data-ws="${esc(w.key)}">${esc(wsName(w))}</button>`).join('')}${direct.length > 3 ? `<small>+${direct.length - 3} more in the panel</small>` : ''}` : ''}
       ${branch.length ? `<small>${branch.length} nested deeper in this branch</small>` : ''}</div>` : ''}`;
 }
-let wsHoverIds = null;
+let wsHoverIds = null, spot = null;
 function paint(){
-  const lit = wsHoverIds ? new Set(wsHoverIds) : hoverId && adj.has(hoverId) ? new Set([hoverId, ...adj.get(hoverId)]) : null;
-  nodeSel.attr('display', n => shown(n) && !(lvl === 'far' && n.d >= 3) ? null : 'none')
+  const lit = spot ? spot.ids : wsHoverIds ? new Set(wsHoverIds) : hoverId && adj.has(hoverId) ? new Set([hoverId, ...adj.get(hoverId)]) : null;
+  nodeSel.attr('display', n => shown(n) && !farHidden(n) ? null : 'none')
     .classed('sel', n => !!selected && selected.id === n.id)
     .classed('picked', n => picked.has(n.id))
     .classed('lit', n => !!lit && lit.has(n.id))
-    .classed('fade', n => !!lit && !lit.has(n.id));
+    .classed('fade', n => !!lit && !lit.has(n.id))
+    .classed('spot', n => !!spot && spot.ids.has(n.id));
   nebSel.attr('display', n => shown(n) ? null : 'none');
-  edgeSel.attr('display', l => shown(l.target) && !(lvl === 'far' && l.target.d >= 3) && !(mode === 'timeline' && l.target.d === 1) ? null : 'none')
+  edgeSel.attr('display', l => shown(l.target) && !farHidden(l.target) && !(mode === 'timeline' && l.target.d === 1) ? null : 'none')
     .attr('opacity', l => lit && !(lit.has(l.source.id) && lit.has(l.target.id)) ? .2 : 1);
   crossSel.attr('display', l => shown(l.source) && shown(l.target) && lvl !== 'far' ? null : 'none');
   L.spine.attr('display', mode === 'timeline' ? null : 'none');
@@ -683,6 +717,8 @@ const zoom = d3.zoom().scaleExtent([.15, 4]).on('zoom', e => {
     paint();
   }
   L.nodes.selectAll('.lbl.t0, .lbl.t1').attr('font-size', n => (n.d === 0 ? 11.5 : 10.5) / Math.min(K, 1.2));
+  L.nodes.selectAll('.fbadge').attr('transform', n => `translate(${n.r + 3},${-n.r - 3}) scale(${1 / Math.min(K, 1)})`);
+  placeCallout();
   tickSel.attr('font-size', 8 / Math.min(K, 1));
 });
 svg.call(zoom).on('dblclick.zoom', null);
@@ -834,6 +870,7 @@ function renderPanel(n){
       <button class="go" type="button" data-enter>${picked.size > 1 && isPicked ? `enter workspace (${picked.size}) →` : hasOwn ? 'open its workspace →' : 'new workspace →'}</button>
       <button class="ghost" type="button" data-pick>${isPicked ? '− remove from selection' : '+ add to selection'}</button>
     </div>
+    ${fileKids(n).length ? `<section><h3>files attached · ${fileKids(n).length}</h3><div class="rows">${fileKids(n).map(c => `<button class="row" type="button" data-file="${c.id}">${typeIcon('file', n.color)}<span>${esc(c.label)}<small>${esc(String(c.kind).toLowerCase())}${c.file?.pages ? ` · ${c.file.pages} pages` : ''}</small></span></button>`).join('')}</div></section>` : ''}
     ${direct.length ? `<section><h3>workspaces in this node</h3><div class="rows">${direct.map(wsRow).join('')}</div></section>` : ''}
     ${branch.length ? `<section><h3>nested deeper in this branch</h3><div class="rows">${branch.map(wsRow).join('')}</div></section>` : ''}
     <section><h3>summary</h3><p class="body-text">${esc(n.detail)}</p></section>
@@ -859,6 +896,7 @@ panel.addEventListener('click', e => {
   if (b.dataset.wsopen) return openWsKey(b.dataset.wsopen);
   if (b.hasAttribute('data-suggest')) return suggestFor(selected, b);
   if (b.hasAttribute('data-keep')){ MAP.data[selected.id].ai = false; rebuild(); toast('kept on the map'); return; }
+  if (b.dataset.file){ const f = byId.get(b.dataset.file); if (f){ select(f, false); focusDrop([f.id], parentOf[f.id]); } return; }
   if (b.hasAttribute('data-unfoldpdf')) return unfoldPdf(selected, b);
   if (b.hasAttribute('data-droppages')){ dropPages(selected.id); rebuild(); toast('pages removed'); return; }
   if (b.hasAttribute('data-unfile')){
@@ -1003,14 +1041,14 @@ function dragSummary(dt){
   return files.length === 1 ? (imgs ? 'image' : 'file') : `${files.length} ${imgs === files.length ? 'images' : 'files'}`;
 }
 function worldAt(cx, cy){ const t = d3.zoomTransform(svg.node()); return {x: (cx - t.x) / t.k, y: (cy - t.y) / t.k}; }
-function members(tid){ return nodes.filter(n => n.theme === tid && !n.loose && shown(n) && !(lvl === 'far' && n.d >= 3)); }
+function members(tid){ return nodes.filter(n => n.theme === tid && !n.loose && shown(n) && !farHidden(n)); }
 
 // which zone is under world point p? `skip` = ids that can't be targets (the dragged node + its branch)
 function zoneAt(p, skip, prev){
   const k = d3.zoomTransform(svg.node()).k;
   let best = null, bs = 1;
   for (const n of nodes){
-    if (n.d === 0 || skip?.has(n.id) || !shown(n) || (lvl === 'far' && n.d >= 3)) continue;
+    if (n.d === 0 || skip?.has(n.id) || !shown(n) || farHidden(n)) continue;
     let s;
     if (lvl === 'near') s = (p.x > n.x - 90 && p.x < n.x + 90 && p.y > n.y - 24 && p.y < n.y + 150) ? Math.hypot(n.x - p.x, n.y - p.y) / 200 : 2;
     else { const reach = n.r * k + SNAP * (prev?.node === n ? 1.35 : 1); s = Math.hypot(n.x - p.x, n.y - p.y) * k / reach; }  // sticky once locked on
@@ -1261,15 +1299,49 @@ async function dropOnMap(files, uri, z){
   tick(); reflow(.35);
   flash([...made.map(m => m[0]), z.node?.id, z.theme].filter(Boolean));
   const what = entries.length === 1 ? `“${entries[0].label}”` : `${entries.length} items`;
-  const saved = store.set('neura-map', MAP);
+  const saved = store.set('neura-map', MAP), ids = made.map(m => m[0]), home = z.kind === 'node' ? z.node.id : z.kind === 'cloud' ? z.theme : 'root';
+  focusDrop(ids, home);
+  const again = {label: 'show me', fn: () => focusDrop(ids, home)};
   toast(!saved ? `${what} added, but browser storage is full, so it won’t survive a reload`
-    : z.kind === 'node' ? `${what} attached to ${byId.get(z.node.id).label}` : z.kind === 'cloud' ? `${what} added to the ${byId.get(z.theme).label} cloud` : `${what} left loose · drag it onto a node to file it`);
+    : z.kind === 'node' ? `${what} attached to ${byId.get(z.node.id).label}` : z.kind === 'cloud' ? `${what} added to the ${byId.get(z.theme).label} cloud` : `${what} left loose`, again);
 }
 function flash(ids){
   if (RM) return; const s = new Set(ids);
   nodeSel.filter(n => s.has(n.id)).classed('landed', false).each(function(){ void this.getBBox(); }).classed('landed', true);
   setTimeout(() => nodeSel.classed('landed', false), 800);
 }
+
+// after a drop: glide the camera to it, spotlight the item + where it went, and pin a callout on it
+function fileKids(n){ return (n.children || []).map(id => byId.get(id)).filter(c => c && c.file && !c.pageOf); }
+function focusDrop(ids, parentId, {move = true, ms = 5000} = {}){
+  const items = ids.map(id => byId.get(id)).filter(Boolean); if (!items.length) return;
+  folded.delete(parentId); items.forEach(n => { let p = parentOf[n.id]; while (p){ folded.delete(p); p = parentOf[p]; } });
+  const par = parentId && parentId !== 'root' ? byId.get(parentId) : null;
+  const lit = new Set(items.map(n => n.id)); if (par){ lit.add(par.id); if (parentOf[par.id]) lit.add(parentOf[par.id]); }
+  spot = {ids: lit, items, par, t0: Date.now()};
+  L.spot.selectAll('*').remove();
+  const col = par ? par.color : LOOSEC;
+  L.spot.selectAll('path').data(items.filter(n => !n.loose)).join('path').attr('class','spot-link').attr('stroke', col);
+  L.spot.selectAll('circle').data(items).join('circle').attr('class','spot-halo').attr('stroke', col).attr('r', n => n.r + 7);
+  const co = $('callout'); co.style.setProperty('--cc', col);
+  const first = items[0], what = items.length === 1 ? first.label : `${items.length} items`;
+  co.innerHTML = `<b>▤ ${esc(what)}</b><span>${first.loose ? 'loose · drag onto a node to file it' : `<i>→</i> ${par && par.d === 1 ? 'cloud' : 'attached to'} <i>${esc(par ? par.label : '')}</i>`}</span>`;
+  co.hidden = false;
+  paint(); tick();
+  if (move){
+    const pts = [...items, ...(par ? [par] : [])].map(n => ({x: n.fx ?? n.x, y: n.fy ?? n.y}));
+    fitTo(pts, {maxK: Math.max(1.1, Math.min(K, 1.35)), dur: 750});
+  }
+  clearTimeout(focusDrop.t); focusDrop.t = setTimeout(endSpot, ms);
+}
+function endSpot(){ if (!spot) return; spot = null; L.spot.selectAll('*').remove(); $('callout').hidden = true; paint(); }
+function placeCallout(){
+  const co = $('callout'); if (!spot || co.hidden) return;
+  const n = spot.items[0], t = d3.zoomTransform(svg.node());
+  co.style.left = Math.round(t.applyX(n.x)) + 'px'; co.style.top = Math.round(t.applyY(n.y) - n.r * t.k) + 'px';
+}
+svg.on('pointerdown.spot', () => { if (spot && Date.now() - spot.t0 > 600) endSpot(); });   // any click on the map after it lands dismisses it
+addEventListener('keydown', e => { if (e.key === 'Escape') endSpot(); });
 
 // re-file a dropped item by dragging it: same three zones, the node itself is the ghost
 function refileMove(e, n){
@@ -1295,7 +1367,8 @@ function refileEnd(n){
   const m = byId.get(n.id); m.x = keep.x; m.y = keep.y;
   if (z.kind === 'cloud'){ m.fx = keep.x; m.fy = keep.y; } else if (z.kind === 'node'){ m.fx = null; m.fy = null; }
   tick(); reflow(.3); flash([n.id, to]);
-  toast(z.kind === 'node' ? `moved onto ${byId.get(to).label}` : z.kind === 'cloud' ? `filed under the ${byId.get(to).label} cloud` : 'left loose on the map');
+  focusDrop([n.id], to, {move: false, ms: 3000});
+  toast(z.kind === 'node' ? `moved onto ${byId.get(to).label}` : z.kind === 'cloud' ? `filed under the ${byId.get(to).label} cloud` : 'left loose on the map', {label: 'show me', fn: () => focusDrop([n.id], to)});
 }
 $('importBtn').onclick = () => openImport([]);
 $('mapFiles').onchange = e => { openImport(pendingFiles.concat([...e.target.files])); e.target.value = ''; };
