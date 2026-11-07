@@ -384,7 +384,7 @@ body.shelf-open .zoomlvl{display:none}
 <aside class="panel glass" id="panel" hidden></aside>
 <aside class="shelf glass" id="shelf" hidden aria-label="Workspaces"></aside>
 
-<div class="dropzone" id="dropzone" hidden><div><b id="dzTitle">drop transcripts to restructure the map</b><span id="dzSub">.txt · .md · .vtt · .srt · neura .json</span></div></div>
+<div class="dropzone" id="dropzone" hidden><div><b id="dzTitle">drop transcripts to restructure the map</b><span id="dzSub">.txt · .md · .vtt · .srt · .pdf · neura .json</span></div></div>
 <div class="drophud glass" id="drophud" hidden aria-live="polite"></div>
 <div class="dropbar glass" id="dropbar" hidden><span data-z="node"><i class="k-node"></i>near a node · attach</span><span data-z="cloud"><i class="k-cloud"></i>inside a cloud · add to theme</span><span data-z="free"><i class="k-free"></i>open space · leave loose</span></div>
 <div class="backdrop" id="backdrop" hidden></div>
@@ -781,10 +781,11 @@ function renderPanel(n){
   }
   if (n.type === 'file'){
     const f = n.file, home = n.loose ? 'loose on the map' : par ? `attached to ${par.d === 1 ? 'the cloud' : ''} ${par.label}` : '';
-    panel.innerHTML = `${head}<p class="meta">${f.url ? 'link' : f.img ? 'image' : 'file'} · ${esc(home)}${f.size ? ` · ${f.size < 1024 ? f.size + ' B' : (f.size / 1024).toFixed(1) + ' KB'}` : ''}</p>
+    panel.innerHTML = `${head}<p class="meta">${f.url ? 'link' : f.pdf ? `pdf${f.pages ? ` · ${f.pages} page${f.pages === 1 ? '' : 's'}` : ''}` : f.img ? 'image' : 'file'} · ${esc(home)}${f.size ? ` · ${f.size < 1024 ? f.size + ' B' : (f.size / 1024).toFixed(1) + ' KB'}` : ''}</p>
       ${f.url ? `<div class="actions"><a class="go" href="${esc(f.url)}" target="_blank" rel="noopener noreferrer" style="text-decoration:none">open link ↗</a></div>` : ''}
-      ${f.img ? `<section><h3>preview</h3><img class="fprev" src="${esc(f.img)}" alt="${esc(n.label)}"></section>` : ''}
-      ${f.text ? `<section><h3>${f.url ? 'address' : 'contents'}</h3><pre class="ftext">${esc(f.text)}</pre></section>` : ''}
+      ${f.scanned ? `<p class="body-text" style="color:var(--muted)">This looks like a scanned PDF (pictures of pages), so there’s no text to read. The first page is shown below.</p>` : ''}
+      ${f.img ? `<section><h3>${f.pdf ? 'first page' : 'preview'}</h3><img class="fprev" src="${esc(f.img)}" alt="${esc(n.label)}"></section>` : ''}
+      ${f.text ? `<section><h3>${f.url ? 'address' : f.pdf ? 'text' + (f.text.length >= 4000 ? ' · start' : '') : 'contents'}</h3><pre class="ftext">${esc(f.text)}</pre></section>` : ''}
       ${!f.img && !f.text && !f.url ? `<p class="body-text" style="color:var(--muted)">This file type can’t be previewed here. Its name and size are kept on the map.</p>` : ''}
       <section><h3>move it</h3><p class="body-text" style="color:var(--muted)">Drag this square onto another node to re-attach it, into a cloud to file it under that theme, or into open space to leave it loose.</p></section>
       ${par && !n.loose ? `<section><h3>attached to</h3><div class="rows">${row(par)}</div></section>` : ''}
@@ -917,6 +918,43 @@ function loadMap(map, {fresh} = {}){
 //   cloud — inside a theme's cloud but not on a node: file under that theme (hull outline lights up)
 //   free  — open space: leave it loose, pinned exactly where it was dropped, to sort later
 const TEXT_EXT = /\.(txt|md|markdown|vtt|srt|json|csv|html?|js|ts|css|py)$/i;
+const isPdf = f => f.type === 'application/pdf' || /\.pdf$/i.test(f.name);
+const readable = f => TEXT_EXT.test(f.name) || isPdf(f);
+// PDF.js (Mozilla) reads PDFs in the browser: no server, no key. Loaded only the first time a PDF shows up.
+const PDFJS = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';
+let pdfjsP = null;
+function loadPdfjs(){
+  return pdfjsP ||= new Promise((res, rej) => {
+    const sc = document.createElement('script'); sc.src = PDFJS + 'pdf.min.js';
+    sc.onload = () => { window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS + 'pdf.worker.min.js'; res(window.pdfjsLib); };
+    sc.onerror = () => { pdfjsP = null; rej(new Error('Couldn’t load the PDF reader. Check your connection and try again.')); };
+    document.head.appendChild(sc);
+  });
+}
+// → {pages, text, img (first-page thumbnail), scanned}. maxPages/maxChars cap the work on long documents.
+async function readPdf(file, {maxPages = 40, maxChars = 140000, thumbW = 360} = {}){
+  const lib = await loadPdfjs();
+  const doc = await lib.getDocument({data: new Uint8Array(await file.arrayBuffer())}).promise;
+  let text = '';
+  for (let i = 1; i <= Math.min(doc.numPages, maxPages) && text.length < maxChars; i++){
+    const pg = await doc.getPage(i), tc = await pg.getTextContent();
+    let line = ''; const lines = [];
+    tc.items.forEach(it => { line += it.str; if (it.hasEOL){ lines.push(line); line = ''; } else if (it.str && !/\s$/.test(it.str)) line += ' '; });
+    if (line) lines.push(line);
+    text += (doc.numPages > 1 ? `\n--- page ${i} ---\n` : '') + lines.map(l => l.replace(/\s+/g, ' ').trim()).filter(Boolean).join('\n') + '\n';
+  }
+  let img = '';
+  try {
+    const pg = await doc.getPage(1), v0 = pg.getViewport({scale: 1}), vp = pg.getViewport({scale: thumbW / v0.width});
+    const c = document.createElement('canvas'); c.width = Math.round(vp.width); c.height = Math.round(vp.height);
+    const ctx = c.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
+    await pg.render({canvasContext: ctx, viewport: vp}).promise;
+    img = c.toDataURL('image/jpeg', .72);
+  } catch (e) {}
+  const body = text.replace(/--- page \d+ ---/g, '').trim();
+  const out = {pages: doc.numPages, text: text.trim().slice(0, maxChars), img, scanned: body.length < 25};
+  doc.destroy(); return out;
+}
 let dragDepth = 0, pendingFiles = [], runCtl = null, dz = null, dzRaf = 0, dzEvt = null;
 const SNAP = 44, CLOUD_PAD = 38;
 const hud = $('drophud'), dbar = $('dropbar');
@@ -1046,7 +1084,7 @@ function showDrop(on){
   const inWs = !$('ws').hidden;
   if (!inWs && on) return;
   $('dzTitle').textContent = 'drop files onto this workspace';
-  $('dzSub').textContent = 'text files show a preview · images show inline';
+  $('dzSub').textContent = 'text, pdf and images show a preview';
   $('dropzone').hidden = !on;
 }
 
@@ -1077,6 +1115,14 @@ async function readDrop(files, uri){
     if (/^image\//.test(f.type)){
       const t = await thumb(f);
       out.push({label: f.name, kind: 'Image', detail: t ? `Image · ${t.w}×${t.h}` : 'Image', file: Object.assign(base, t ? {img: t.img} : {})});
+    } else if (isPdf(f)){
+      try {
+        const r = await readPdf(f, {maxPages: 15, maxChars: 4000});
+        out.push({label: f.name, kind: 'PDF', detail: r.scanned ? `Scanned PDF · ${r.pages} page${r.pages === 1 ? '' : 's'} · no selectable text` : r.text.replace(/--- page \d+ ---/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 220),
+          file: Object.assign(base, {pdf: true, pages: r.pages, img: r.img, text: r.scanned ? '' : r.text.slice(0, 4000), scanned: r.scanned})});
+      } catch (e) {
+        out.push({label: f.name, kind: 'PDF', detail: 'PDF · couldn’t be read (it may be password-protected or damaged).', file: Object.assign(base, {pdf: true})});
+      }
     } else if (TEXT_EXT.test(f.name) || /^text\//.test(f.type)){
       const text = (await f.text()).slice(0, 4000);
       out.push({label: f.name, kind: 'File', detail: text.replace(/\s+/g, ' ').trim().slice(0, 220) || 'Empty text file', file: Object.assign(base, {text})});
@@ -1092,6 +1138,7 @@ async function readDrop(files, uri){
   return out;
 }
 async function dropOnMap(files, uri, z){
+  if (files.some(isPdf)) toast('reading PDF…');
   const entries = await readDrop(files, uri);
   if (!entries.length) return toast(uri ? 'Only web links (http/https) can be dropped.' : 'Nothing to add from that drop.');
   const made = [], stamp = Date.now().toString(36);
@@ -1155,12 +1202,12 @@ function openImport(files){
 function closeImport(){ if (runCtl){ runCtl.abort(); runCtl = null; } $('backdrop').hidden = true; $('sheet').hidden = true; pendingFiles = []; }
 $('backdrop').onclick = closeImport;
 function renderSheet(msg, busy){
-  const ok = pendingFiles.filter(f => TEXT_EXT.test(f.name));
+  const ok = pendingFiles.filter(readable);
   const kb = b => b < 1024 ? b + ' B' : (b / 1024).toFixed(1) + ' KB';
   $('sheet').innerHTML = `
     <h2 id="sheetTitle">restructure the map</h2>
-    <p>Drop meeting transcripts, notes or a saved neura map. Claude reads them and rebuilds the map: themes in the order they came up, tangents branching off, and the through-line from start to end.</p>
-    ${pendingFiles.length ? `<div class="files">${pendingFiles.map(f => `<div class="file-row ${TEXT_EXT.test(f.name) ? '' : 'bad'}"><span>${esc(f.name)}</span><span>${TEXT_EXT.test(f.name) ? kb(f.size) : 'not a text file'}</span></div>`).join('')}</div>`
+    <p>Drop meeting transcripts, notes, PDFs or a saved neura map. Claude reads them and rebuilds the map: themes in the order they came up, tangents branching off, and the through-line from start to end.</p>
+    ${pendingFiles.length ? `<div class="files">${pendingFiles.map(f => `<div class="file-row ${readable(f) ? '' : 'bad'}"><span>${esc(f.name)}</span><span>${readable(f) ? (isPdf(f) ? 'pdf · ' : '') + kb(f.size) : 'not text or pdf'}</span></div>`).join('')}</div>`
       : `<p style="color:var(--muted)">No files yet. Drag them onto this sheet, or choose them below.</p>`}
     <button class="ghost" type="button" data-pickfiles>choose files…</button>
     <div class="opts" role="radiogroup" aria-label="How to use the files">
@@ -1184,8 +1231,17 @@ $('sheet').addEventListener('click', e => {
 });
 
 async function runImport(how){
-  const files = pendingFiles.filter(f => TEXT_EXT.test(f.name));
-  const texts = await Promise.all(files.map(async f => ({name: f.name, text: await f.text()})));
+  const files = pendingFiles.filter(readable);
+  if (files.some(isPdf)) renderSheet('reading PDFs…', true);
+  let texts;
+  try {
+    texts = await Promise.all(files.map(async f => {
+      if (!isPdf(f)) return {name: f.name, text: await f.text()};
+      const r = await readPdf(f, {thumbW: 120});
+      if (r.scanned) throw new Error(`${f.name} is a scanned PDF with no selectable text, so it can’t be used to build the map.`);
+      return {name: f.name, text: r.text};
+    }));
+  } catch (e) { renderSheet(e.message || 'Couldn’t read one of the PDFs.'); return; }
   // a saved neura map loads directly
   for (const t of texts){ if (/\.json$/i.test(t.name)){ try { const j = JSON.parse(t.text); const m = toMap(j, t.name); if (texts.length === 1){ commitMap(m); return; } } catch (e) {} } }
   if (!sample){ renderSheet('Claude isn’t available in this view, so only saved neura .json maps can load here.'); return; }
@@ -1398,7 +1454,7 @@ function itemHTML(it){
   }
   if (it.type === 'sticky') return `<div class="i-head"><span>${esc(it.tag || 'note')}</span><span></span></div><div class="i-text" contenteditable="plaintext-only" spellcheck="false">${esc(it.text)}</div>`;
   if (it.type === 'text') return `<div class="i-text" contenteditable="plaintext-only" spellcheck="false">${esc(it.text)}</div>`;
-  if (it.type === 'file') return `<div class="i-head"><span>file · ${esc(it.size)}</span><span></span></div><h4>${esc(it.name)}</h4>${it.img ? `<img src="${it.img}" alt="${esc(it.name)}">` : it.preview ? `<pre>${esc(it.preview)}</pre>` : `<p>${it.note ? esc(it.note) : 'No preview for this file type.'}</p>`}`;
+  if (it.type === 'file') return `<div class="i-head"><span>${it.note && /^PDF/.test(it.note) ? esc(it.note.toLowerCase()) : 'file'} · ${esc(it.size)}</span><span></span></div><h4>${esc(it.name)}</h4>${it.img ? `<img src="${it.img}" alt="${esc(it.name)}">` : it.preview ? `<pre>${esc(it.preview)}</pre>` : `<p>${it.note ? esc(it.note) : 'No preview for this file type.'}</p>`}`;
   return '';
 }
 function renderItems(){
@@ -1490,6 +1546,9 @@ async function wsDropFiles(files, cx, cy){
     if (/^image\//.test(f.type)){
       if (f.size <= 900 * 1024) it.img = await new Promise(res => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = () => res(''); r.readAsDataURL(f); });
       else { it.img = URL.createObjectURL(f); it.temp = true; }
+    } else if (isPdf(f)){
+      try { const r = await readPdf(f, {maxPages: 5, maxChars: 1200, thumbW: 260}); it.img = r.img; it.preview = r.text.slice(0, 1200); it.note = `PDF · ${r.pages} page${r.pages === 1 ? '' : 's'}${r.scanned ? ' · scanned' : ''}`; }
+      catch (e) { it.note = 'PDF · couldn’t be read here.'; }
     } else if (/^text\//.test(f.type) || TEXT_EXT.test(f.name)){
       it.preview = (await f.text()).slice(0, 1200);
     } else it.note = 'Stored as a reference. Preview works for text and images.';
